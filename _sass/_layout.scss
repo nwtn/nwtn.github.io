@@ -1,0 +1,157 @@
+header[role=banner] {
+	background-color: $color-text;
+	background-position: 0 0;
+	background-repeat: no-repeat;
+	background-size: contain;
+	border-bottom: 10px solid $color-second;
+	display: block;
+	font-family: $sans;
+	margin: 0;
+	padding: 0;
+	text-align: center;
+	text-transform: lowercase;
+	width: 100%;
+
+	@media (min-width: $break-sm) {
+		background-image: url('/img/dave-pixel-art-w480.png');
+		text-align: left;
+	}
+
+
+	h1, a, a:visited, a:active, a:hover, a:focus {
+		background: none;
+		color: $color-bg;
+		text-decoration: none;
+		text-shadow: none;
+	}
+
+	h1 {
+		display: inline-block;
+		font-size: $fontsize-bg;
+		margin: 0;
+		padding: 0;
+
+		@media (min-width: $break-sm) {
+			margin: 0 0 0 $space * 2.375;
+		}
+	}
+
+	a {
+		display: inline-block;
+		font-size: $fontsize-bg;
+		padding: $space / 2 $space;
+
+		&:hover,
+		&:focus {
+			background-color: $color-second;
+		}
+
+		&:active {
+			background-color: darken($color-second, 20%);
+		}
+	}
+}
+
+nav {
+	display: inline-block;
+	margin: 0;
+	padding: 0;
+
+	ul, li {
+		display: inline-block;
+		list-style-type: none;
+		margin: 0;
+		padding: 0;
+	}
+
+	@media (min-width: $break-sm) {
+		float: right;
+	}
+}
+
+main {
+	margin: 0 auto $space auto;
+	max-width: $space * 30;
+	padding: $space;
+}
+
+footer[role=contentinfo] {
+	background: $color-second;
+	color: $color-bg;
+	font-size: $fontsize-sm;
+	padding: $space / 2 0;
+	text-align: center;
+	width: 100%;
+
+	@media (min-width: $break-lg) {
+		text-align: right;
+
+		ul {
+			float: left;
+		}
+	}
+
+	ul, li {
+		display: inline-block;
+		margin: 0;
+		padding: 0;
+	}
+
+	li a, p {
+		display: block;
+		margin: $space / 2 $space;
+		padding: 0;
+	}
+
+	small {
+		font-size: $fontsize-sm;
+	}
+
+	a {
+		color: $color-bg;
+		background-image: linear-gradient($color-second, $color-second), linear-gradient($color-second, $color-second), linear-gradient($color-bg, $color-bg);
+		text-shadow: .03em 0 $color-second, -.03em 0 $color-second, 0 .03em $color-second, 0 -.03em $color-second, .06em 0 $color-second, -.06em 0 $color-second, .09em 0 $color-second, -.09em 0 $color-second, .12em 0 $color-second, -.12em 0 $color-second, .15em 0 $color-second, -.15em 0 $color-second;
+
+		&::-moz-selection {
+			text-shadow: none;
+		}
+
+		&::selection {
+			text-shadow: none;
+		}
+	}
+}
+
+article {
+	margin: $space * 2 auto;
+
+	header, footer {
+		font-family: $sans;
+		margin: $space 0;
+	}
+
+	header p {
+		font-size: $fontsize-md;
+		margin: 0;
+		padding: 0;
+		text-transform: lowercase;
+	}
+
+	footer {
+		text-transform: lowercase;
+	}
+
+	&::after {
+		content: '\00A7';
+		display: block;
+		font-family: 'Garamond', 'Cutive Mono', serif;
+		font-size: $fontsize-hg;
+		margin: $space * 2 auto;
+		text-align: center;
+	}
+
+	&:last-child::after {
+		content: none;
+		display: none;
+	}
+}

@@ -1,0 +1,135 @@
+body {
+	background: $color-bg;
+	color: $color-text;
+	font-family: $serif;
+	font-size: $fontsize;
+	font-weight: 300;
+	line-height: $lineheight;
+	margin: 0 auto;
+}
+
+::-moz-selection {
+	background: $color-hilite2;
+}
+
+::selection {
+	background: $color-hilite2;
+}
+
+a {
+	background-image: linear-gradient($color-bg, $color-bg), linear-gradient($color-bg, $color-bg), linear-gradient($color-link, $color-link);
+	background-position: 0% 90%, 100% 90%, 0% 90%;
+	background-repeat: no-repeat, no-repeat, repeat-x;
+	background-size: .05em 1px, .05em 1px, 1px 1px;
+	color: $color-link;
+	text-decoration: none;
+	text-shadow: .03em 0 $color-bg, -.03em 0 $color-bg, 0 .03em $color-bg, 0 -.03em $color-bg, .06em 0 $color-bg, -.06em 0 $color-bg, .09em 0 $color-bg, -.09em 0 $color-bg, .12em 0 $color-bg, -.12em 0 $color-bg, .15em 0 $color-bg, -.15em 0 $color-bg;
+
+	&::-moz-selection {
+		text-shadow: none;
+	}
+
+	&::selection {
+		text-shadow: none;
+	}
+
+	&:active {
+		color: darken($color-link, 15%);
+	}
+
+	&:hover,
+	&:focus {
+		color: lighten($color-link, 15%);
+	}
+
+	figure & {
+		background: none;
+		text-decoration: underline;
+		text-shadow: none;
+	}
+}
+
+b, strong {
+	font-weight: 700;
+}
+
+blockquote {
+	background-color: $color-hilite;
+	padding-left: $space / 2;
+
+	> :last-child {
+		margin-bottom: 0;
+	}
+}
+
+h1, h2, h3, h4, h5, h6,
+p, blockquote, pre,
+ul, ol, dl, figure,
+%vertical-rhythm {
+	margin-bottom: $space / 2;
+}
+
+h1, h2, h3, h4, h5, h6 {
+	font-family: $sans;
+	font-weight: 300;
+	padding-top: $space;
+}
+
+img {
+	max-width: 100%;
+	vertical-align: middle;
+}
+
+figure {
+	margin: $space * 2 0;
+	position: relative;
+
+	img {
+		border: 1px solid $color-second;
+		display: block;
+		margin: $space auto;
+		padding: $space;
+	}
+}
+
+figcaption {
+	font-family: $sans;
+}
+
+ul, ol {
+	margin-left: $space;
+}
+
+li {
+	margin: $space / 4 0;
+
+	> ul,
+	> ol {
+		 margin-bottom: 0;
+	}
+}
+
+pre, code {
+	background-color: $color-hilite;
+	font-family: $mono;
+}
+
+code {
+	padding: 1px $space / 4;
+
+	pre & {
+		background: none;
+	}
+}
+
+pre {
+	border: 1px solid $color-second;
+	padding: $space / 3 $space / 2;
+	overflow-x: scroll;
+
+	> code {
+		border: 0;
+		padding-left: 0;
+		padding-right: 0;
+	}
+}

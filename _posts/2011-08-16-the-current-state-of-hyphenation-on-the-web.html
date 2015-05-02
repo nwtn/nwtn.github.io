@@ -1,0 +1,459 @@
+---
+layout:     post
+title:      "The Current State of Hyphenation on the Web"
+date:       2011-08-16 16:37:11
+permalink:  the-current-state-of-hyphenation-on-the-web
+---
+<p>Last September, <a rel="external" href="http://www.alistapart.com/">A List Apart</a> published ‘<a rel="external" href="http://www.alistapart.com/articles/the-look-that-says-book/">The Look That Says Book</a>’, a great article by Richard Fink about hyphenation and justification on the web. It’s a great read, and I highly recommend you check it out. At the time the article was published, there were no really great solutions for hyphenation on the web; there wasn’t any support for <span class="sc">CSS</span> solutions, and manually- or JavaScript-injected soft hyphens and zero-width spaces often caused broken browser find-on-page functionality. Fortunately, the situation is starting to change.</p>
+
+<h3><span class="sc">CSS</span>: <code>hyphens</code></h3>
+
+<p>Although I wasn’t able to attend, I was very excited to follow the recent <a rel="external" href="http://aneventapart.com/2011/minneapolis/">An Event Apart conference in Minneapolis</a> via Twitter and notes posted by attendees. One thing that caught my eye was <a rel="http://clagnut.com/">Richard Rutter</a>’s talk, ‘Detail in Web Typography’, and a couple of tweets (<a rel="external" href="https://twitter.com/#!/sherjc/status/100615844039622656">1</a>, <a rel="external" href="https://twitter.com/#!/Malarkey/status/100615943931174913">2</a>) that mentioned <span class="sc">CSS</span>-based hyphenation. It turns out that the latest versions of some browsers support hyphenation with the following <span class="sc">CSS</span>:</p>
+
+<figure>
+{% highlight css linenos %}
+-webkit-hyphens: auto;
+-moz-hyphens: auto;
+hyphens: auto;
+{% endhighlight %}
+  <figcaption>Figure 1: Hyphenation <span class="sc">CSS</span></figcaption>
+</figure>
+
+<p><b>Update <time datetime="2011-08-17T10:28:00">2011‒08‒17 10:28am</time>:</b> Firefox 6 got released as I was writing this yesterday, so there are now two browsers available supporting <span class="sc">CSS</span> <code>hyphens</code>, Firefox 6 and Safari 5.1.</p>
+
+<p>This is great! Beautiful web hyphenation without relying on JavaScript and without breaking find-on-page! But what about older browsers?</p>
+
+<h3>JavaScript: Hyphenator.js</h3>
+
+<p>The JavaScript library that Fink suggests using in his <span class="sc">ALA</span> article is <a rel="external" href="http://code.google.com/p/hyphenator/">Hyphenator.js</a>. This library is a thing of beauty. Based on a vast dictionary, it will automatically inject soft hyphens and zero-width spaces into your content; browsers that recognize these characters should hyphenate properly. New versions even support the <code>hyphens</code> <span class="sc">CSS</span> rules, and will use those when supported. The only downside is, as mentioned above and by Fink, the find-on-page issue: if you hit ⌘–F (or <span class="sc">ctrl</span>-F or whatever) to look for a word, most browsers wouldn’t find it because of the invisible-but-still-present soft hyphens.</p>
+
+<h3>Testing for support</h3>
+
+<p>For many, the broken find-on-page might not be a big enough reason to avoid using Hyphenator.js, but others may not want to lose that functionality. Luckily, not all browsers break in this way, and we can test for proper full support before applying Hyphenator.js.</p>
+
+<figure>
+{% highlight js linenos %}
+function test_wordbreak(delimiter) {
+  try {
+    /* create a div container and a span within that
+     * these have to be appended to document.body, otherwise some browsers can give false negative */
+    var div = document.createElement('div'),
+      span = document.createElement('span'),
+      divStyle = div.style,
+      spanSize = 0,
+      result = false,
+      result1 = false,
+      result2 = false;
+    document.body.appendChild(div);
+    div.appendChild(span);
+    divStyle.cssText = 'position:absolute;top:0;left:0;overflow:visible;width:1.25em;';
+
+    /* get height of unwrapped text */
+    span.innerHTML = 'mm';
+    spanSize = span.offsetHeight;
+
+    /* compare height w/ delimiter, to see if it wraps to new line */
+    span.innerHTML = 'm' + delimiter + 'm';
+    result = (span.offsetHeight > spanSize);
+
+    /* results and cleanup */
+    div.removeChild(span);
+    document.body.removeChild(div);
+    return result;
+  } catch(e) {
+    return false;
+  }
+}
+{% endhighlight %}
+  <figcaption>Figure 2: Testing soft hyphens (first attempt)</figcaption>
+</figure>
+
+<p>The <code>test_wordbreak()</code> function above takes a string as an argument and uses that string as a delimiter between two characters. With this function we can test &amp;shy; (or &amp;#193;) and zero-width space delimiters to see if browsers acknowledge them and properly wrap text to a new line. We test for this by measuring the height of the container <em>without</em> the delimiter to get the height of a single line of text, then by measuring the height of the container <em>with</em> the delimiter. If the second measurement is larger, we can be reasonably sure that the text has been wrapped to a second line. It’s a little hacky, but it works.</p>
+
+<p>This function works well in most browsers. However, some browsers that I’ve tested (specifically on BlackBerry devices, including the PlayBook) will recognize the soft hyphen and wrap the text properly, but won’t display the hyphen itself. For this reason, we need to modify the function above to also test for the width of the container.</p>
+
+<figure>
+{% highlight js linenos %}
+function test_hyphens(delimiter, testWidth) {
+  try {
+    /* create a div container and a span within that
+     * these have to be appended to document.body, otherwise some browsers can give false negative */
+    var div = document.createElement('div'),
+      span = document.createElement('span'),
+      divStyle = div.style,
+      spanSize = 0,
+      result = false,
+      result1 = false,
+      result2 = false;
+    document.body.appendChild(div);
+    div.appendChild(span);
+    divStyle.cssText = 'position:absolute;top:0;left:0;overflow:visible;width:1.25em;';
+
+    /* get height of unwrapped text */
+    span.innerHTML = 'mm';
+    spanSize = span.offsetHeight;
+
+
+    /* compare height w/ delimiter, to see if it wraps to new line */
+    span.innerHTML = 'm' + delimiter + 'm';
+    result1 = (span.offsetHeight > spanSize);
+
+    /* if we're testing the width too (i.e. for soft-hyphen, not zws),
+     * this is because tested Blackberry devices will wrap the text but not display the hyphen */
+    if (testWidth) {
+      /* get width of wrapped, non-hyphenated text */
+      span.innerHTML = 'm<br />m';
+      spanSize = span.offsetWidth;
+
+      /* compare width w/ wrapped w/ delimiter to see if hyphen is present */
+      span.innerHTML = 'm' + delimiter + 'm';
+      result2 = (span.offsetWidth > spanSize);
+    } else {
+      result2 = true;
+    }
+
+    /* results and cleanup */
+    if (result1 === true && result2 === true) { result = true; }
+    div.removeChild(span);
+    document.body.removeChild(div);
+    return result;
+  } catch(e) {
+    return false;
+  }
+}
+{% endhighlight %}
+  <figcaption>Figure 3: Testing soft hyphens (second attempt)</figcaption>
+</figure>
+
+<p>As before, if the width of the container <em>with</em> the soft hyphen is larger than the width <em>without</em>, we can be reasonably sure there is an extra visible hyphen being displayed.</p>
+
+<p>These tests tell us whether the browser recognizes and uses the soft hyphen properly, but not whether they break the find-on-page functionality. To test that, we’ll need another function that injects some text <em>with</em> a delimiter, and then searches for that text <em>without</em> the delimiter. If the text is found, we know that find-on-page is not broken; if not, it is broken.</p>
+
+<figure>
+{% highlight js linenos %}
+function test_hyphens_find(delimiter) {
+  try {
+    /* create a dummy input for resetting selection location, and a div container
+     * these have to be appended to document.body, otherwise some browsers can give false negative
+     * div container gets the doubled testword, separated by the delimiter
+     * Note: giving a width to div gives false positive in iOS Safari */
+    var dummy = document.createElement('input'),
+      div = document.createElement('div'),
+      testword = 'lebowski',
+      result = false,
+      textrange;
+    document.body.appendChild(dummy);
+    document.body.appendChild(div);
+    div.innerHTML = testword + delimiter + testword;
+
+    /* reset the selection to the dummy input element, i.e. BEFORE the div container
+     * this conditional block based on http://stackoverflow.com/questions/499126/jquery-set-cursor-position-in-text-area */
+    if (dummy.setSelectionRange) {
+      dummy.focus();
+      dummy.setSelectionRange(0,0);
+    } else if (dummy.createTextRange) {
+      textrange = dummy.createTextRange();
+      textrange.collapse(true);
+      textrange.moveEnd('character', 0);
+      textrange.moveStart('character', 0);
+      textrange.select();
+    }
+
+    /* try to find the doubled testword, without the delimiter */
+    if (window.find) {
+      result = window.find(testword + testword);
+    } else {
+      try {
+        textrange = self.document.body.createTextRange();
+        result = textrange.findText(testword + testword);
+      } catch(e) {
+        result = false;
+      }
+    }
+    document.body.removeChild(div);
+    document.body.removeChild(dummy);
+    return result;
+  } catch(e) {
+    return false;
+  }
+}
+{% endhighlight %}
+  <figcaption>Figure 4: Testing find-on-page with soft hyphens</figcaption>
+</figure>
+
+<p>By combining the functions in Figures 3 and 4, we can get a pretty good idea if it’s safe to use Hyphenator.js in a browser.</p>
+
+<h3>Problems and Browser Support</h3>
+
+<p>Naturally, life for a web developer is never that easy.</p>
+
+<p>First, there’s the issue of Chrome’s support for the <code>hyphens</code> <span class="sc">CSS</span>. Unfortunately, Chrome <em>claims</em> that it supports this hyphenation, but in actual fact no hyphenation occurs. This is a problem if we want to test for <span class="sc">CSS</span> support before applying Hyphenator.js.</p>
+
+<p>The solution to this is even more hacky than the functions above, but it should work.</p>
+
+<figure>
+{% highlight js linenos %}
+function test_hyphens_css() {
+  try {
+    /* create a div container and a span within that
+     * these have to be appended to document.body, otherwise some browsers can give false negative */
+    var div = document.createElement('div'),
+      span = document.createElement('span'),
+      divStyle = div.style,
+      spanHeight = 0,
+      spanWidth = 0,
+      result = false,
+      result1 = false,
+      result2 = false;
+    document.body.appendChild(div);
+    div.appendChild(span);
+    span.innerHTML = 'Bacon ipsum dolor sit amet jerky velit in culpa hamburger et. Laborum dolor proident, enim dolore duis commodo et strip steak. Salami anim et, veniam consectetur dolore qui tenderloin jowl velit sirloin. Et ad culpa, fatback cillum jowl ball tip ham hock nulla short ribs pariatur aute. Pig pancetta ham bresaola, ut boudin nostrud commodo flank esse cow tongue culpa. Pork belly bresaola enim pig, ea consectetur nisi. Fugiat officia turkey, ea cow jowl pariatur ullamco proident do laborum velit sausage. Magna biltong sint tri-tip commodo sed bacon, esse proident aliquip. Ullamco ham sint fugiat, velit in enim sed mollit nulla cow ut adipisicing nostrud consectetur. Proident dolore beef ribs, laborum nostrud meatball ea laboris rump cupidatat labore culpa. Shankle minim beef, velit sint cupidatat fugiat tenderloin pig et ball tip. Ut cow fatback salami, bacon ball tip et in shank strip steak bresaola. In ut pork belly sed mollit tri-tip magna culpa veniam, short ribs qui in andouille ham consequat. Dolore bacon t-bone, velit short ribs enim strip steak nulla. Voluptate labore ut, biltong swine irure jerky. Cupidatat excepteur aliquip salami dolore. Ball tip strip steak in pork dolor. Ad in esse biltong. Dolore tenderloin exercitation ad pork loin t-bone, dolore in chicken ball tip qui pig. Ut culpa tongue, sint ribeye dolore ex shank voluptate hamburger. Jowl et tempor, boudin pork chop labore ham hock drumstick consectetur tri-tip elit swine meatball chicken ground round. Proident shankle mollit dolore. Shoulder ut duis t-bone quis reprehenderit. Meatloaf dolore minim strip steak, laboris ea aute bacon beef ribs elit shank in veniam drumstick qui. Ex laboris meatball cow tongue pork belly. Ea ball tip reprehenderit pig, sed fatback boudin dolore flank aliquip laboris eu quis. Beef ribs duis beef, cow corned beef adipisicing commodo nisi deserunt exercitation. Cillum dolor t-bone spare ribs, ham hock est sirloin. Brisket irure meatloaf in, boudin pork belly sirloin ball tip. Sirloin sint irure nisi nostrud aliqua. Nostrud nulla aute, enim officia culpa ham hock. Aliqua reprehenderit dolore sunt nostrud sausage, ea boudin pork loin ut t-bone ham tempor. Tri-tip et pancetta drumstick laborum. Ham hock magna do nostrud in proident. Ex ground round fatback, venison non ribeye in.';
+
+    /* get size of unhyphenated text */
+    divStyle.cssText = 'position:absolute;top:0;left:0;width:5em;text-align:justify;text-justification:newspaper;';
+    spanHeight = span.offsetHeight;
+    spanWidth = span.offsetWidth;
+
+    /* compare size with hyphenated text */
+    divStyle.cssText = 'position:absolute;top:0;left:0;width:5em;text-align:justify;text-justification:newspaper;-moz-hyphens:auto;-webkit-hyphens:auto;-o-hyphens:auto;-ms-hyphens:auto;hyphens:auto;';
+    result = (span.offsetHeight != spanHeight || span.offsetWidth != spanWidth);
+
+    /* results and cleanup */
+    div.removeChild(span);
+    document.body.removeChild(div);
+    return result;
+    return result;
+  } catch(e) {
+    return false;
+  }
+}
+{% endhighlight %}
+  <figcaption>Figure 5: Testing for <span class="sc">CSS</span> <i>hyphens</i> support</figcaption>
+</figure>
+
+<p>Basically, this throws a huge wad of text into an element and sees if the element changes size when hyphenation is applied. Like I said, hacky.</p>
+
+<p>A separate problem exists for the &amp;shy; and zero-width space tests: in most of my browser tests, these functions performed beautifully. The exception, though, is on Android browsers. I don’t have consistent access to any Android devices for extensive testing, but based on what I’ve heard and seen, Android browsers will return a false positive on the <code>test_wordbreak_find()</code> test. This seems to be because the find-on-page that JavaScript is using is different than the find-on-page that the user has access to: JavaScript will find the delimited text, the user will not.</p>
+
+<p>This kind of false positive means that Hyphenator.js will be applied even though using it will break find-on-page. Options for dealing with this are unappealing:</p>
+
+<ol>
+  <li>Accept that find-on-page is broken on these devices.</li>
+  <li>Do browser sniffing in the test to make sure Android browsers don’t have Hyphenator.js</li>
+  <li>Give up on the whole thing entirely.</li>
+</ol>
+
+<h3>Wrapping it all in Modernizr</h3>
+
+<p><a rel="external" href="http://www.modernizr.com/">Modernizr</a> is amazing and should be part of every web dev’s toolkit. Not only does it have a great built-in battery of tests for feature support, it also allows us to add our own. We can use Modernizr’s addTest() <span class="sc">API</span> to get very robust support for hyphenation on the web, without breaking anything in older browsers.</p>
+
+<figure>
+{% highlight css linenos %}
+element {
+  /* as far as I know, these two are unsupported, but their inclusion won't hurt */
+  -o-hyphens: auto;
+  -ms-hyphens: auto;
+
+  -moz-hyphens: auto;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+}
+{% endhighlight %}
+
+{% highlight js linenos %}
+(function() {
+  function test_hyphens(delimiter, testWidth) {
+    try {
+      /* create a div container and a span within that
+       * these have to be appended to document.body, otherwise some browsers can give false negative */
+      var div = document.createElement('div'),
+        span = document.createElement('span'),
+        divStyle = div.style,
+        spanSize = 0,
+        result = false,
+        result1 = false,
+        result2 = false;
+      document.body.appendChild(div);
+      div.appendChild(span);
+      divStyle.cssText = 'position:absolute;top:0;left:0;overflow:visible;width:1.25em;';
+
+      /* get height of unwrapped text */
+      span.innerHTML = 'mm';
+      spanSize = span.offsetHeight;
+
+      /* compare height w/ delimiter, to see if it wraps to new line */
+      span.innerHTML = 'm' + delimiter + 'm';
+      result1 = (span.offsetHeight > spanSize);
+
+      /* if we're testing the width too (i.e. for soft-hyphen, not zws),
+       * this is because tested Blackberry devices will wrap the text but not display the hyphen */
+      if (testWidth) {
+        /* get width of wrapped, non-hyphenated text */
+        span.innerHTML = 'm<br />m';
+        spanSize = span.offsetWidth;
+
+        /* compare width w/ wrapped w/ delimiter to see if hyphen is present */
+        span.innerHTML = 'm' + delimiter + 'm';
+        result2 = (span.offsetWidth > spanSize);
+      } else {
+        result2 = true;
+      }
+
+      /* results and cleanup */
+      if (result1 === true && result2 === true) { result = true; }
+      div.removeChild(span);
+      document.body.removeChild(div);
+      return result;
+    } catch(e) {
+      return false;
+    }
+  }
+
+  function test_hyphens_find(delimiter) {
+    try {
+      /* create a dummy input for resetting selection location, and a div container
+       * these have to be appended to document.body, otherwise some browsers can give false negative
+       * div container gets the doubled testword, separated by the delimiter
+       * Note: giving a width to div gives false positive in iOS Safari */
+      var dummy = document.createElement('input'),
+        div = document.createElement('div'),
+        testword = 'lebowski',
+        result = false,
+        textrange;
+      document.body.appendChild(dummy);
+      document.body.appendChild(div);
+      div.innerHTML = testword + delimiter + testword;
+
+      /* reset the selection to the dummy input element, i.e. BEFORE the div container
+       * this conditional block based on http://stackoverflow.com/questions/499126/jquery-set-cursor-position-in-text-area */
+      if (dummy.setSelectionRange) {
+        dummy.focus();
+        dummy.setSelectionRange(0,0);
+      } else if (dummy.createTextRange) {
+        textrange = dummy.createTextRange();
+        textrange.collapse(true);
+        textrange.moveEnd('character', 0);
+        textrange.moveStart('character', 0);
+        textrange.select();
+      }
+
+      /* try to find the doubled testword, without the delimiter */
+      if (window.find) {
+        result = window.find(testword + testword);
+      } else {
+        try {
+          textrange = self.document.body.createTextRange();
+          result = textrange.findText(testword + testword);
+        } catch(e) {
+          result = false;
+        }
+      }
+      document.body.removeChild(div);
+      document.body.removeChild(dummy);
+      window.scroll(0,0);
+      return result;
+    } catch(e) {
+      return false;
+    }
+  }
+
+  function test_hyphens_css() {
+    try {
+      /* create a div container and a span within that
+       * these have to be appended to document.body, otherwise some browsers can give false negative */
+      var div = document.createElement('div'),
+        span = document.createElement('span'),
+        divStyle = div.style,
+        spanHeight = 0,
+        spanWidth = 0,
+        result = false,
+        result1 = false,
+        result2 = false;
+      document.body.appendChild(div);
+      div.appendChild(span);
+      span.innerHTML = 'Bacon ipsum dolor sit amet jerky velit in culpa hamburger et. Laborum dolor proident, enim dolore duis commodo et strip steak. Salami anim et, veniam consectetur dolore qui tenderloin jowl velit sirloin. Et ad culpa, fatback cillum jowl ball tip ham hock nulla short ribs pariatur aute. Pig pancetta ham bresaola, ut boudin nostrud commodo flank esse cow tongue culpa. Pork belly bresaola enim pig, ea consectetur nisi. Fugiat officia turkey, ea cow jowl pariatur ullamco proident do laborum velit sausage. Magna biltong sint tri-tip commodo sed bacon, esse proident aliquip. Ullamco ham sint fugiat, velit in enim sed mollit nulla cow ut adipisicing nostrud consectetur. Proident dolore beef ribs, laborum nostrud meatball ea laboris rump cupidatat labore culpa. Shankle minim beef, velit sint cupidatat fugiat tenderloin pig et ball tip. Ut cow fatback salami, bacon ball tip et in shank strip steak bresaola. In ut pork belly sed mollit tri-tip magna culpa veniam, short ribs qui in andouille ham consequat. Dolore bacon t-bone, velit short ribs enim strip steak nulla. Voluptate labore ut, biltong swine irure jerky. Cupidatat excepteur aliquip salami dolore. Ball tip strip steak in pork dolor. Ad in esse biltong. Dolore tenderloin exercitation ad pork loin t-bone, dolore in chicken ball tip qui pig. Ut culpa tongue, sint ribeye dolore ex shank voluptate hamburger. Jowl et tempor, boudin pork chop labore ham hock drumstick consectetur tri-tip elit swine meatball chicken ground round. Proident shankle mollit dolore. Shoulder ut duis t-bone quis reprehenderit. Meatloaf dolore minim strip steak, laboris ea aute bacon beef ribs elit shank in veniam drumstick qui. Ex laboris meatball cow tongue pork belly. Ea ball tip reprehenderit pig, sed fatback boudin dolore flank aliquip laboris eu quis. Beef ribs duis beef, cow corned beef adipisicing commodo nisi deserunt exercitation. Cillum dolor t-bone spare ribs, ham hock est sirloin. Brisket irure meatloaf in, boudin pork belly sirloin ball tip. Sirloin sint irure nisi nostrud aliqua. Nostrud nulla aute, enim officia culpa ham hock. Aliqua reprehenderit dolore sunt nostrud sausage, ea boudin pork loin ut t-bone ham tempor. Tri-tip et pancetta drumstick laborum. Ham hock magna do nostrud in proident. Ex ground round fatback, venison non ribeye in.';
+
+      /* get size of unhyphenated text */
+      divStyle.cssText = 'position:absolute;top:0;left:0;width:5em;text-align:justify;text-justification:newspaper;';
+      spanHeight = span.offsetHeight;
+      spanWidth = span.offsetWidth;
+
+      /* compare size with hyphenated text */
+      divStyle.cssText = 'position:absolute;top:0;left:0;width:5em;text-align:justify;text-justification:newspaper;-moz-hyphens:auto;-webkit-hyphens:auto;-o-hyphens:auto;-ms-hyphens:auto;hyphens:auto;';
+      result = (span.offsetHeight != spanHeight || span.offsetWidth != spanWidth);
+
+      /* results and cleanup */
+      div.removeChild(span);
+      document.body.removeChild(div);
+      return result;
+      return result;
+    } catch(e) {
+      return false;
+    }
+  }
+
+  /* check if browser claims support for CSS hyphens */
+  Modernizr.addTest("csshyphens", function() {
+    return Modernizr.testAllProps('hyphens');
+  });
+
+
+  /* check if CSS hyphens actually work */
+  Modernizr.addTest("workingcsshyphens", function() {
+    try {
+      return test_hyphens_css();
+    } catch(e) {
+      return false;
+    }
+  }
+
+
+  /* check if soft hyphens and zws are displayed properly */
+  Modernizr.addTest("softhyphens", function() {
+    try {
+      return test_hyphens('&#173;', true) && test_wordbreak('&#8203;', false); // use numeric entity instead of &shy; in case it’s XHTML
+    } catch(e) {
+      return false;
+    }
+  });
+
+
+  /* check if find-on-page works with soft hyphens and zws */
+  Modernizr.addTest("softhyphensfind", function() {
+    try {
+      return test_hyphens_find('&#173;') && test_wordbreak_find('&#8203;');
+    } catch(e) {
+      return false;
+    }
+  });
+
+  Modernizr.load({
+    test: (!Modernizr.csshyphens || !Modernizr.workingcsshyphens) && Modernizr.softhyphens && Modernizr.softhyphensfind,
+    yep : 'hyphenator.js'
+  });
+})();
+{% endhighlight %}
+  <figcaption>Figure 6: Final suite of tests</figcaption>
+</figure>
+
+<p>These tests will check for both <span class="sc">CSS</span> hyphenation support and Hyphenator.js soft hyphen/zero-width space support. The results of these tests will allow us to dynamically apply different styles and <span class="sc">JS</span> libraries based on what the user’s browser supports.</p>
+
+<ol>
+  <li>If <span class="sc">CSS</span> hyphenation is supported, it will be applied; browsers that don’t recognize the <span class="sc">CSS</span> hyphenation rules will simply ignore them.</li>
+  <li>If <span class="sc">CSS</span> hyphenation is not supported, but soft hyphens and the zero width space are, we’ll load and apply Hyphenator.js.</li>
+  <li>If neither are supported, the page remains unhyphenated but functional.</li>
+</ol>
+
+<h3>Your turn!</h3>
+
+<p>If you’d like to test this out for yourself in your own browser, feel free to check out <a rel="help" href="/demos/hyphenation/test.html">this demo page</a> and let me know your results, either in a <a href="/the-current-state-of-hyphenation-on-the-web/#disqus_thread">comment</a>, by <a rel="me" href="mailto:david@davidnewton.ca">email</a> or via <a rel="me" href="http://twitter.com/newtron">Twitter</a>.</p>
+
+<p>This is pretty basic right now, and is more of a proof-of-concept. I definitely welcome feedback and improvements. <a rel="external" href="https://github.com/nwtn/Modernizr">I’ve forked Modernizr on GitHub</a> and have added this as a feature-detect, so feel free to fork it yourself and make it better! (Especially if you have a fix for the Android problem!) [Note: my feature test has now been pulled into <a rel="external" href="https://github.com/Modernizr/Modernizr/">the main Modernizr repo</a>, so you can also mess around with it there].</p>
+
+<h3>Updates</h3>
+<ol>
+	<li>Updated <time datetime="2011-08-17T10:28:00">2011‒08‒17 10:28</time> to mention Firefox 6 release</li>
+	<li>Updated <time datetime="2011-08-17T13:40:00">2011‒08‒17 13:40</time> to fix a syntax error in Figure 6</li>
+	<li>Updated <time datetime="2011-09-06T21:10:00">2011‒09‒06 21:10</time> to add window.scroll(0,0) in Figure 6 and update GitHub note</li>
+	<li>Updated <time datetime="2012-03-30T12:12:00">2012‒03‒30 12:12</time> to fix soft hyphen and ZWS characters that weren't appearing correctly in the code</li>
+</ol>

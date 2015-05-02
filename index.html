@@ -1,10 +1,25 @@
-<!DOCTYPE html>
-<html>
-	<head>
-		<title>davidnewton.ca</title>
-	</head>
-	<body>
-		<h1>davidnewton.ca</h1>
-		<p>Test</p>
-	</body>
-</html>
+---
+layout: default
+---
+
+<div>
+
+	<h2 hidden aria-label="Posts" aria-hidden="false">Posts</h2>
+
+	{% for post in site.posts %}
+		<article class="excerpt">
+			<header>
+				<h3><a href="{{ post.url | prepend: site.baseurl }}">{{ post.title }}</a></h3>
+				<p class="post-meta">{{ post.date | date: "%-d %B, %Y" }}{% if post.meta %} • {{ post.meta }}{% endif %}</p>
+			</header>
+
+			{{ post.excerpt }}
+
+			<footer>
+				<a href="{{ post.url | prepend: site.baseurl }}">Continue reading</a>
+			</footer>
+		</article>
+
+	{% endfor %}
+
+</div>

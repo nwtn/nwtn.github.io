@@ -1,0 +1,90 @@
+---
+layout:     post
+title:      "Responsive images: picturefill type attribute"
+date:       2012-09-29
+permalink:  responsive-images-picturefill-type-attribute
+---
+<p>I’m working on a new responsive site and decided to finally delve into the responsive image quagmire. I’ve been following the goings-on for awhile, but not in any great detail. After doing some research, I wanted to focus on two approaches: first, using inline <span class="sc">SVG</span>s whenever possible, so the images will scale and look great at any size; second, when <span class="sc">SVG</span>s aren’t an option, conditionally loading different size images based on media queries.</p>
+
+<p><a rel="external" href="http://scottjehl.com/">Scott Jehl</a>’s <a rel="external" href="https://github.com/scottjehl/picturefill/">picturefill</a> script seemed like a good starting point; picturefill is a JavaScript polyfill for the <a rel="external" href="http://dvcs.w3.org/hg/html-proposals/raw-file/tip/responsive-images/responsive-images.html">proposed new <code>&lt;picture&gt;</code> element</a>. <code>&lt;picture&gt;</code> is interesting because, like the existing <code>&lt;video&gt;</code> tag, it uses <code>&lt;source&gt;</code> tags for media. Unlike <code>&lt;video&gt;</code>, though, the current <code>&lt;picture&gt;</code> proposal doesn’t recognize <code>type</code> attributes on <code>&lt;source&gt;</code> tags.</p>
+
+<figure>
+{% highlight html linenos %}
+<div data-picture data-alt="A giant stone face at The Bayon temple in Angkor Thom, Cambodia">
+  <div data-src="small.jpg"></div>
+  <div data-src="medium.jpg"     data-media="(min-width: 400px)"></div>
+  <div data-src="large.jpg"      data-media="(min-width: 800px)"></div>
+  <div data-src="extralarge.jpg" data-media="(min-width: 1000px)"></div>
+
+  <!-- Fallback content for non-JS browsers. Same img src as the initial, unqualified source element. -->
+  <noscript>
+    <img src="external/imgs/small.jpg" alt="A giant stone face at The Bayon temple in Angkor Thom, Cambodia">
+  </noscript>
+</div>
+{% endhighlight %}
+	<figcaption>Figure 1: HTML for picturefill.</figcaption>
+</figure>
+
+<p>With <code>&lt;video&gt;</code>, the browser will load the first <code>&lt;source&gt;</code> with a compatible <code>type</code>. A <code>type</code> attribute on <code>&lt;picture&gt;</code> would allow me to load an <span class="sc">SVG</span> if it was supported, and fall back on <span class="sc">JPEG</span>s with media queries if it wasn’t, as in Figure 2. This has been discussed at the <a rel="external" href="http://www.w3.org/community/respimg/">Responsive Images Community Group</a> in <a rel="external" href="http://www.w3.org/community/respimg/2012/08/21/thoughts-on-adding-a-type-attribute-2/">a blog post</a> by <a rel="external" href="http://www.brettjankord.com/">Brett Jankord</a>.</p>
+
+<figure>
+{% highlight html linenos %}
+<div data-picture data-alt="A giant stone face at The Bayon temple in Angkor Thom, Cambodia">
+  <!-- If browser supports inline SVG, use image below: -->
+  <div data-src="external/imgs/vector.svg" data-type="image/svg+xml"></div>
+
+  <!-- Otherwise, fallback on JPEGs -->
+  <div data-src="external/imgs/small.jpg"></div>
+  <div data-src="external/imgs/medium.jpg" data-media="(min-width: 400px)"></div>
+  <div data-src="external/imgs/large.jpg" data-media="(min-width: 800px)"></div>
+  <div data-src="external/imgs/extralarge.jpg" data-media="(min-width: 1000px)"></div>
+
+  <!-- Fallback content for non-JS browsers. Same img src as the initial, unqualified source element. -->
+  <noscript><img src="external/imgs/small.jpg" alt="A giant stone face at The Bayon temple in Angkor Thom, Cambodia"></noscript>
+</div>
+{% endhighlight %}
+	<figcaption>Figure 2: Using a type attribute to load an <span class="sc">SVG</span> if it’s supported</figcaption>
+</figure>
+
+<p>With this strategy in mind, it was relatively simple to modify picturefill to accomodate a <code>type</code> attribute. I included a function to detect whether support for <span class="sc">SVG</span> was available, with the actual detection based on <a rel="external" href="http://modernizr.com/">Modernizr</a>’s <a rel="external" href="https://github.com/Modernizr/Modernizr/blob/master/modernizr.js#L826">inlinesvg test</a>. (I also threw in a test for <a rel="external" href="https://developers.google.com/speed/webp/">WebP</a>, again <a rel="external" href="https://github.com/Modernizr/Modernizr/blob/master/feature-detects/img-webp.js">based on Modernizr</a>.) Now when looping through the source elements, the script will match on media with no type, <code>image/svg+xml</code> if supported, and <code>image/webp</code> if supported. (Additional types for <span class="sc">JPEG</span>, <span class="sc">PNG</span>, and <span class="sc">GIF</span> could easily be added, but I chose to just leave out the <code>type</code> attribute for graphics with [near-] universal support.)</p>
+
+<figure>
+{% highlight html linenos %}
+<div data-picture data-alt="A giant stone face at The Bayon temple in Angkor Thom, Cambodia">
+  <!-- If browser supports inline SVG, use image below: -->
+  <div data-src="external/imgs/vector.svg" data-type="image/svg+xml"></div>
+
+  <!-- Otherwise, if browser supports WebP, use images below: -->
+  <div data-src="external/imgs/small.webp" data-type="image/webp"></div>
+  <div data-src="external/imgs/medium.webp" data-media="(min-width: 400px)" data-type="image/webp"></div>
+  <div data-src="external/imgs/large.webp" data-media="(min-width: 800px)" data-type="image/webp"></div>
+  <div data-src="external/imgs/extralarge.webp" data-media="(min-width: 1000px)" data-type="image/webp"></div>
+
+  <!-- Otherwise, fallback on JPEGs -->
+  <div data-src="external/imgs/small.jpg"></div>
+  <div data-src="external/imgs/medium.jpg" data-media="(min-width: 400px)"></div>
+  <div data-src="external/imgs/large.jpg" data-media="(min-width: 800px)"></div>
+  <div data-src="external/imgs/extralarge.jpg" data-media="(min-width: 1000px)"></div>
+
+  <!-- Fallback content for non-JS browsers. Same img src as the initial, unqualified source element. -->
+  <noscript><img src="external/imgs/small.jpg" alt="A giant stone face at The Bayon temple in Angkor Thom, Cambodia"></noscript>
+</div>
+{% endhighlight %}
+	<figcaption>Figure 3: Using a type attribute to load an <span class="sc">SVG</span> or WebPs if they’re supported</figcaption>
+</figure>
+
+<p>In the example in Figure 3, we can expect the following results:</p>
+<ol>
+	<li>If <span class="sc">SVG</span> is supported: the <span class="sc">SVG</span> will be loaded and all other sources will be ignored.</li>
+	<li>If <span class="sc">SVG</span> is not supported but WebP is: the <span class="sc">SVG</span> will be ignored, the WebP images will be loaded based on their media queries, and the <span class="sc">JPEG</span>s will be ignored.</li>
+	<li>If neither <span class="sc">SVG</span> or WebP are supported: the <span class="sc">JPEG</span>s will be loaded based on their media queries.</li>
+	<li>If media queries aren’t supported or if JavaScript is turned off, the basic <code>&lt;img&gt;</code> tag will be used.</li>
+</ol>
+
+<p>I’ve created <a rel="external" href="https://github.com/nwtn/picturefill">a new fork of picturefill</a> with these changes. Feel free to use this, and <a href="/responsive-images-picturefill-type-attribute/#disqus_thread">let me know what you think in the comments</a>.</p>
+
+<h3>Updates</h3>
+<ol>
+	<li>Update @ <time datetime="2012-10-02T18:10:00">2012‒10‒02 18:10</time>: I just merged in <a rel="external" href="https://twitter.com/wilto">Mat Marquis</a>’s <a rel="external" href="https://github.com/Wilto/picturefill-proposal">fork</a> with <a rel="external" href="http://www.w3.org/community/respimg/2012/06/18/florians-compromise/">Florian’s Compromise</a>, and also split the files into a <code>&lt;div&gt;</code> version and a <code>&lt;picture&gt;</code>/<code>&lt;source&gt;</code> version. <a rel="external" href="https://github.com/nwtn/picturefill">Updated at GitHub</a>.</li>
+	<li>Update @ <time datetime="2012-10-03T09:54:00">2012‒10‒03 9:54</time> Since I’m working on this for a WordPress blog, I’ve also now updated the GitHub repo to include a <a rel="external" href="https://github.com/nwtn/picturefill">picturefill WordPress plugin</a>.</li>
+</ol>

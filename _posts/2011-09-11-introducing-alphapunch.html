@@ -1,0 +1,373 @@
+---
+layout:     post
+title:      "Introducing alphaPun.ch"
+date:       2011-09-11
+permalink:  introducing-alphapunch
+---
+<p>This post is to introduce a new project I’ve been working on, <a rel="external" href="http://alphapun.ch">alphapun.ch</a>, which I made as an entry for the <a rel="external" href="http://10k.aneventapart.com/"><span class="sc">10K</span> Apart</a> contest.</p>
+
+<p>Alphapun.ch is a tool that, given a transparent <span class="sc">PNG</span> or <span class="sc">GIF</span> file, will trace the opaque bits and create masks for them. You can use these masks to allow a user to click through the transparent bits of an image. Alphapun.ch outputs <span class="sc">HTML</span>, <span class="sc">CSS</span> and JavaScript for you to include on your site.</p>
+
+<h3>Background</h3>
+
+<p>Graphics on the web are based on boxes. This is naturally limiting, but luckily we are able to circumvent this limitation by applying transparent backgrounds to our images. Although any image object we display will still be a square or a rectangle, these transparent backgrounds can give the illusion of an irregular shape.</p>
+
+<p>Most of the time this is a very good system, but there are edge cases where it may not be flexible enough. <strong>Sometimes we don’t want to just be able to see through a transparent background, we want to be able to <em>click</em> through it as well.</strong></p>
+
+<p>The problem of clicking through transparent images is something that first started to bother me back in 2009. At the time I was creating what was basically a <a rel="external" href="http://en.wikipedia.org/wiki/Paper_doll">paper doll</a> site, where users could drag and drop different articles of clothing onto a doll. The clothing and accessories were all <span class="sc">PNG</span>s with transparent backgrounds. The site used <a rel="external" href="http://jqueryui.com/">jQuery <span class="sc">UI</span></a> to allow users to click and drag individual images.</p>
+
+<p>The problem occurred in a situation like Figure 1, where two images didn’t <em>appear</em> to overlap, but actually did because of the transparent backgrounds. Assume that in Figure 1 the hat and sunglasses are two separate images with transparent backgrounds, and that the stacking order on the page has the hat in front of the sunglasses.</p>
+
+<figure>
+	<img src="/img/alphapunch_fig1.png" alt="overlapping hat and sunglasses" />
+	<figcaption>Figure 1: despite appearances, these images overlap<br /><small>Art by <a rel="friend" href="http://hambeck.me/">Ham</a></small></figcaption>
+</figure>
+
+<p>A user might want to click and drag the glasses, and would rightfully think that they could. However a click on what <em>appears</em> to be the glasses image would <em>actually</em> register a click on the transparent part of the hat image. This means a user would unexpectedly start dragging the wrong article of clothing. I thought this unexpected behaviour was unacceptable and looked for a solution.</p>
+
+<h3>Initial Solution, or “The Hard Way”</h3>
+
+<p>Solving the problem involved three steps. First, I needed to be able to identify and define the opaque and transparent parts of the image, so that these could be treated differently. To do this, you can use Adobe Fireworks to generate a set of coordinates defining the opaque parts of the image. In Fireworks <span class="sc">CS5</span>:</p>
+
+<ol class="alpha">
+	<li>import an image with a transparent background</li>
+	<li>select the opaque bits using the magic wand or other tools</li>
+	<li>convert the selection to a path by choosing <i>Select</i> &gt; <i>Convert Marquee to Path</i></li>
+	<li>convert the path to a hotspot by right-clicking it and choosing <i>Insert Hotspot</i></li>
+	<li>choose <i>File</i> &gt; <i>Export…</i> and export the <span class="sc">HTML</span></li>
+	<li>the coordinates defining the shape/path/hotspot will be inside the generated <span class="sc">HTML</span> document</li>
+</ol>
+
+<figure>
+	<img src="/img/alphapunch_fig2a.png" alt="image with opaque part selected" />
+	<img src="/img/alphapunch_fig2b.png" alt="image with path" />
+	<img src="/img/alphapunch_fig2c.png" alt="image with hotspot" />
+{% highlight html linenos %}
+<area shape="poly" coords="76,1,83,6,89,13,98,29,108,22,116,22,126,24,132,31,135,40,136,49,134,60,129,72,120,82,107,89,100,92,108,67,107,61,104,57,95,52,85,51,77,51,59,51,42,55,37,56,33,58,29,62,29,66,33,81,40,94,22,89,10,80,3,69,1,56,2,44,6,33,14,26,19,23,25,23,37,27,41,23,46,15,53,6,61,1,76,1,76,1" href="javascript:;" alt="" />
+{% endhighlight %}
+	<figcaption>Figure 2: Getting coordinates from Adobe Fireworks</figcaption>
+</figure>
+
+<p>This is tedious, and becomes complicated when you have multiple shapes in a single image, or when you have shapes with holes in them. But, it works.</p>
+
+<p>Armed with a set of coordinates to define the opaque shape, the second step was to figure out what to do with them. Drawing the shape on a <code>canvas</code> was not really an option at the time, and even if I could do that, there was no obvious way it could solve my problem. I needed to draw the shape as a real <span class="sc">DOM</span> object that could register click events, and that wasn’t another rectangular box overlapping my content.</p>
+
+<p>I ended up stumbling onto a solution in <a rel="external" href="http://www.walterzorn.de/en/index.htm">Walter Zorn</a>’s <a rel="external" href="http://www.walterzorn.de/en/jsgraphics/jsgraphics_e.htm">wz_jsgraphics</a> library (which I’ve <a rel="external" href="https://github.com/nwtn/wz_jsgraphics.js">made available on GitHub</a>). This library was created as an early polyfill for <code>canvas</code>, and included a function called <code>fillPolygon</code> that, when given a set of coordinates, would draw the shape defined by those coordinates using a large number of small <code>div</code> elements. The result has the desired shape, is a set of real <span class="sc">DOM</span> objects, and doesn’t have any problematic transparent backgrounds to confuse users.</p>
+
+<figure>
+	<img src="/img/alphapunch_fig3.gif" alt="polygonal mask made of div elements" />
+	<figcaption>Figure 3: Zoomed-in example of a filled polygon from wz_jsgraphics, made from divs</figcaption>
+</figure>
+
+<p>The third and final step was to tie this new wz_jsgraphics mask to the original images somehow. The solution to this was to make the <code>div</code>s in the mask transparent, overlay them directly on top of their source image, and to use jQuery UI’s super-useful <a rel="external" href="http://jqueryui.com/demos/draggable/#option-handle">handle option</a> to define the mask as a handle for the image. Some messing about with <code>z-index</code> and <code>position</code> to insure proper stacking orders (with masks always on top of images), and everything worked beautifully.</p>
+
+<figure>
+	<img src="/img/alphapunch_fig4.png" alt="glasses img - hat img - glasses mask - hat mask" />
+	<figcaption>Figure 4: stacking order of images and masks</figcaption>
+</figure>
+
+<p>With this solution, when a user appeared to be clicking on the sunglasses, they would actually be clicking not on the glasses image, and not on the hat image, but on a set of transparent <code>div</code>s that act as a mask and handle for the sunglasses. To the user, this would be seamless, and they would be able to drag the glasses onto the doll without being blocked by the hat.</p>
+
+<h3>alphaPun.ch, or “The Easy Way”</h3>
+
+<p>In updating my 2009 solution and making alphaPun.ch, I wanted to update and simplify each part of the three step process outlined above.</p>
+
+<p>First, I wanted to be able to <em>automatically</em> generate the set of coordinates defining the opaque part of the shape. AlphaPun.ch traces shapes using an alphaPunchPencil (<span class="sc">APP</span>) object.</p>
+
+<figure>
+{% highlight js linenos %}
+var p = new APP();                                  // create the alphaPunchPencil object
+p.img = src;                                        // assign it an image to trace
+p.iw = p.img.offsetWidth + 4;                       // pad the image width
+p.ih = p.img.offsetHeight + 4;                      // pad the image height
+try { p.fmc(); } catch(e1) { err(''); return bf; }  // find a missing colour to use in tracing
+try { p.fpo(); } catch(e2) { err(''); return bf; }  // trace opaque shapes
+try { p.fpt(); } catch(e3) { err(''); return bf; }  // trace transparent shapes within opaque shapes (i.e. holes)
+try { p.cp(); } catch(e4) { err(''); return bf; }   // combine paths of opaque and transparent shapes
+{% endhighlight %}
+	<figcaption>Figure 5: Code to trace an image</figcaption>
+</figure>
+
+<p>Once an image is uploaded, the tool draws it onto a canvas. The opaque parts of the image are traced using a <a rel="external" href="http://en.wikipedia.org/wiki/Moore_neighborhood">Moore–Neighbor</a> tracing algorithm, based in part on <a href="mailto:abeer.ghuneim@mail.mcgill.ca">Abeer Ghuneim</a>’s <a rel="external" href="http://www.imageprocessingplace.com/downloads_V3/root_downloads/tutorials/contour_tracing_Abeer_George_Ghuneim/moore.html">tutorial</a>. This eliminates the need to launch Fireworks and manually generate coordinates, and it works when there are multiple objects in an image and when there are objects with holes.</p>
+
+<p>Next, I wanted to replace wz_jsgraphics for drawing the masks. It worked very well, but it had far too many features for my needs, and I didn’t want to rely on any external libraries other than jQuery. An alphaPunchFist (<span class="sc">APF</span>) object is used to create and place the masks.</p>
+
+<figure>
+{% highlight js linenos %}
+$('.alphapunch').each( function() {                                             // find all elements with the 'alphapunch' class
+  var f = new APF();                                                            // create a new alphaPunchFist object
+
+  $(this).find('.aptarget').each( function() {	                           // find all elements with the 'aptarget' class
+    $(this).wrap('<span style="display:inline-block;position:relative;" />');   // wrap the target in a container span
+    $(this).append('<span class="apmask" id="apmask_' + this.id + '"></span>'); // add another span for the mask
+    f.c = dge('apmask_' + this.id);                                             // set that span as a container for the mask
+    f.ds(0,0,this.offsetWidth,this.offsetHeight);                               // draw the (simple) mask
+  });
+
+  $(this).find('img').each( function() {                                        // find all images
+    $(this).wrap('<span style="display:inline-block;position:relative;" />');   // wrap them in a container span
+    $(this).after('<span class="apmask" id="apmask_' + this.id + '"></span>');  // add another span for the mask
+    f.c = dge('apmask_' + this.id);                                             // set that span as a container for the mask
+    f.iw = this.offsetWidth;                                                    // set the image width
+    f.ih = this.offsetHeight;                                                   // set the image height
+    f.p = coords[this.id];                                                      // grab the coordinates that define the mask
+    f.f();                                                                      // draw the mask by making a filled polygon
+  });
+});
+{% endhighlight %}
+	<figcaption>Figure 6: Code to draw an alphaPun.ch masks</figcaption>
+</figure>
+
+<p>I wrote my own scanline-based replacement for the <code>fillPolygon()</code> function (<code>f.f()</code> in Figure 6), based in part on the algorithms in the <a rel="external" href="http://www.cs.rit.edu/~icss571/filling/index.html">Polygon Fill Teaching Tool</a> (which, unfortunately, doesn’t list an author). This new function draws <code>span</code>s rather than <code>div</code>s, which means they can be properly embedded in inline elements, such as <code>a</code>.</p>
+
+<p>Finally, I wanted to update the third step so that, rather than manually fiddling with styles for individual objects and trying to figure out stacking orders, the tool could spit out some (relatively) simple <span class="sc">HTML</span>, <span class="sc">CSS</span> and JavaScript that a web dev could throw on a page for immediate functionality. I imagine that the most popular use case will be clicking through an image to a link beneath it, so that’s what the generated code does.</p>
+
+<figure>
+{% highlight html linenos %}
+<!-- container indicating alphapunching -->
+<div class="alphapunch">
+
+  <!--
+    image you alphaPunch'd. needs an ID
+    if you run into trouble positioning it, put it in a container element,
+    like <figure>
+  -->
+  <figure><img id="hat_01" src="hat_01.png" alt="hat_01" /></figure>
+
+  <!--
+    "target" links you want to click through to. they all need IDs.
+    if you run into trouble positioning them, put them in a container
+    element, like "nav" or "ul" or "div"
+  -->
+  <ul>
+    <li><a class="aptarget" id="foo" href="javascript:alert('foo')">foo</a></li>
+    <li><a class="aptarget" id="bar" href="javascript:alert('bar')">bar</a></li>
+  </ul>
+
+</div>
+
+<!-- alphapunch uses some jQuery; it must be present -->
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+{% endhighlight %}
+	<figcaption>Figure 7: HTML used when clicking through to a link</figcaption>
+</figure>
+
+<p>The <span class="sc">HTML</span> simply places your image and the links in a container element with the class <code>alphapunch</code>. The links have the class <code>aptarget</code>, and the images and links all have <span class="sc">ID</span>s. The <span class="sc">JS</span> will find instances of the <code>alphapunch</code> class, create masks for the images by matching them with a set of coordinates (based on <span class="sc">ID</span>), and create masks for links with the <code>aptarget</code> class.</p>
+
+<figure>
+{% highlight css linenos %}
+/*
+  stacking order from back-to-front is:
+    1. links
+    2. image
+    3. link masks
+    4. image mask
+  IE requires a BG to register click event.
+*/
+
+.alphapunch { position: relative; }
+.alphapunch img { position: relative; z-index: 2; }
+.aptarget { display: inline-block; }
+.apmask span { z-index: 3; background: rgba(0,0,0,0.001); }
+img + .apmask span { z-index: 4; }
+{% endhighlight %}
+	<figcaption>Figure 8: CSS used when clicking through to a link</figcaption>
+</figure>
+
+<p>The <span class="sc">CSS</span> sets up the stacking order of the image, the links, and the masks. The  order from back to front is: links, image, link masks, image mask. Note that the masks must have a background for them to register click events in <span class="sc">IE</span>.</p>
+
+<figure>
+{% highlight js linenos %}
+(function() {
+  var coords = { hat_01: [{ x: 39, y: 91 }, { x: 39, y: 93 }, { x: 40, y: 94 }, { x: 40, y: 95 }, { x: 39, y: 94 }, { x: 36, y: 94 }, { x: 35, y: 93 }, { x: 33, y: 93 }, { x: 32, y: 92 }, { x: 30, y: 92 }, { x: 29, y: 91 }, { x: 27, y: 91 }, { x: 26, y: 90 }, { x: 25, y: 90 }, { x: 24, y: 89 }, { x: 23, y: 89 }, { x: 22, y: 88 }, { x: 21, y: 88 }, { x: 20, y: 87 }, { x: 19, y: 87 }, { x: 18, y: 86 }, { x: 17, y: 85 }, { x: 16, y: 84 }, { x: 15, y: 84 }, { x: 14, y: 83 }, { x: 13, y: 82 }, { x: 12, y: 82 }, { x: 11, y: 81 }, { x: 10, y: 80 }, { x: 10, y: 79 }, { x: 9, y: 78 }, { x: 8, y: 77 }, { x: 8, y: 76 }, { x: 7, y: 75 }, { x: 6, y: 74 }, { x: 6, y: 72 }, { x: 5, y: 71 }, { x: 5, y: 69 }, { x: 4, y: 68 }, { x: 4, y: 66 }, { x: 3, y: 65 }, { x: 3, y: 61 }, { x: 2, y: 60 }, { x: 2, y: 57 }, { x: 3, y: 56 }, { x: 3, y: 51 }, { x: 4, y: 50 }, { x: 4, y: 46 }, { x: 5, y: 45 }, { x: 5, y: 42 }, { x: 6, y: 41 }, { x: 6, y: 40 }, { x: 7, y: 39 }, { x: 7, y: 38 }, { x: 8, y: 37 }, { x: 9, y: 36 }, { x: 9, y: 35 }, { x: 10, y: 34 }, { x: 10, y: 33 }, { x: 11, y: 32 }, { x: 12, y: 31 }, { x: 12, y: 30 }, { x: 13, y: 29 }, { x: 14, y: 29 }, { x: 15, y: 28 }, { x: 16, y: 27 }, { x: 18, y: 27 }, { x: 19, y: 26 }, { x: 20, y: 26 }, { x: 21, y: 25 }, { x: 24, y: 25 }, { x: 25, y: 24 }, { x: 28, y: 24 }, { x: 29, y: 25 }, { x: 32, y: 25 }, { x: 33, y: 26 }, { x: 34, y: 26 }, { x: 35, y: 27 }, { x: 36, y: 27 }, { x: 37, y: 28 }, { x: 38, y: 29 }, { x: 40, y: 29 }, { x: 41, y: 28 }, { x: 42, y: 27 }, { x: 42, y: 26 }, { x: 43, y: 25 }, { x: 44, y: 24 }, { x: 44, y: 23 }, { x: 45, y: 22 }, { x: 46, y: 21 }, { x: 46, y: 20 }, { x: 47, y: 19 }, { x: 47, y: 18 }, { x: 48, y: 17 }, { x: 49, y: 16 }, { x: 50, y: 15 }, { x: 51, y: 14 }, { x: 51, y: 13 }, { x: 52, y: 12 }, { x: 53, y: 11 }, { x: 53, y: 10 }, { x: 54, y: 9 }, { x: 55, y: 8 }, { x: 56, y: 7 }, { x: 57, y: 6 }, { x: 57, y: 5 }, { x: 58, y: 4 }, { x: 59, y: 3 }, { x: 67, y: 3 }, { x: 68, y: 4 }, { x: 72, y: 4 }, { x: 73, y: 3 }, { x: 76, y: 3 }, { x: 77, y: 2 }, { x: 78, y: 3 }, { x: 80, y: 3 }, { x: 81, y: 4 }, { x: 82, y: 5 }, { x: 83, y: 6 }, { x: 83, y: 7 }, { x: 84, y: 8 }, { x: 85, y: 9 }, { x: 85, y: 10 }, { x: 86, y: 11 }, { x: 87, y: 12 }, { x: 88, y: 13 }, { x: 89, y: 14 }, { x: 90, y: 15 }, { x: 91, y: 16 }, { x: 92, y: 17 }, { x: 92, y: 18 }, { x: 93, y: 19 }, { x: 94, y: 20 }, { x: 94, y: 22 }, { x: 95, y: 23 }, { x: 95, y: 25 }, { x: 96, y: 26 }, { x: 96, y: 27 }, { x: 97, y: 28 }, { x: 97, y: 29 }, { x: 98, y: 30 }, { x: 99, y: 31 }, { x: 100, y: 30 }, { x: 101, y: 30 }, { x: 102, y: 29 }, { x: 103, y: 29 }, { x: 104, y: 28 }, { x: 105, y: 28 }, { x: 106, y: 27 }, { x: 107, y: 27 }, { x: 108, y: 26 }, { x: 109, y: 25 }, { x: 111, y: 25 }, { x: 112, y: 24 }, { x: 116, y: 24 }, { x: 117, y: 23 }, { x: 119, y: 23 }, { x: 120, y: 24 }, { x: 123, y: 24 }, { x: 124, y: 25 }, { x: 126, y: 25 }, { x: 127, y: 26 }, { x: 128, y: 27 }, { x: 129, y: 28 }, { x: 130, y: 29 }, { x: 131, y: 30 }, { x: 132, y: 31 }, { x: 132, y: 32 }, { x: 133, y: 33 }, { x: 133, y: 35 }, { x: 134, y: 36 }, { x: 134, y: 38 }, { x: 135, y: 39 }, { x: 135, y: 42 }, { x: 136, y: 43 }, { x: 136, y: 48 }, { x: 137, y: 49 }, { x: 137, y: 52 }, { x: 136, y: 53 }, { x: 136, y: 58 }, { x: 135, y: 59 }, { x: 135, y: 63 }, { x: 134, y: 64 }, { x: 134, y: 66 }, { x: 133, y: 67 }, { x: 133, y: 68 }, { x: 132, y: 69 }, { x: 132, y: 71 }, { x: 131, y: 72 }, { x: 130, y: 73 }, { x: 130, y: 74 }, { x: 129, y: 75 }, { x: 129, y: 76 }, { x: 128, y: 77 }, { x: 127, y: 78 }, { x: 126, y: 79 }, { x: 125, y: 80 }, { x: 124, y: 81 }, { x: 123, y: 82 }, { x: 122, y: 83 }, { x: 121, y: 84 }, { x: 120, y: 85 }, { x: 118, y: 85 }, { x: 117, y: 86 }, { x: 116, y: 86 }, { x: 115, y: 87 }, { x: 114, y: 88 }, { x: 112, y: 88 }, { x: 111, y: 89 }, { x: 109, y: 89 }, { x: 108, y: 90 }, { x: 105, y: 90 }, { x: 104, y: 91 }, { x: 103, y: 91 }, { x: 102, y: 92 }, { x: 102, y: 91 }, { x: 103, y: 90 }, { x: 103, y: 89 }, { x: 104, y: 88 }, { x: 104, y: 84 }, { x: 105, y: 83 }, { x: 105, y: 81 }, { x: 106, y: 80 }, { x: 106, y: 77 }, { x: 107, y: 76 }, { x: 107, y: 72 }, { x: 108, y: 71 }, { x: 109, y: 70 }, { x: 109, y: 63 }, { x: 108, y: 62 }, { x: 108, y: 58 }, { x: 107, y: 57 }, { x: 106, y: 56 }, { x: 105, y: 56 }, { x: 104, y: 55 }, { x: 103, y: 55 }, { x: 102, y: 54 }, { x: 100, y: 54 }, { x: 99, y: 53 }, { x: 96, y: 53 }, { x: 95, y: 52 }, { x: 88, y: 52 }, { x: 87, y: 51 }, { x: 69, y: 51 }, { x: 68, y: 52 }, { x: 58, y: 52 }, { x: 57, y: 53 }, { x: 52, y: 53 }, { x: 51, y: 54 }, { x: 49, y: 54 }, { x: 48, y: 55 }, { x: 45, y: 55 }, { x: 44, y: 56 }, { x: 40, y: 56 }, { x: 39, y: 57 }, { x: 37, y: 57 }, { x: 36, y: 58 }, { x: 34, y: 58 }, { x: 33, y: 59 }, { x: 32, y: 60 }, { x: 32, y: 61 }, { x: 31, y: 62 }, { x: 31, y: 64 }, { x: 30, y: 65 }, { x: 29, y: 66 }, { x: 29, y: 69 }, { x: 30, y: 70 }, { x: 30, y: 71 }, { x: 31, y: 72 }, { x: 31, y: 74 }, { x: 32, y: 75 }, { x: 32, y: 77 }, { x: 33, y: 78 }, { x: 33, y: 82 }, { x: 34, y: 83 }, { x: 34, y: 84 }, { x: 35, y: 85 }, { x: 36, y: 86 }, { x: 37, y: 87 }, { x: 38, y: 88 }, { x: 38, y: 90 }, { x: 39, y: 91 }, { x: 39, y: 93 }] };
+
+var APF=function(){var i=document;this.cnv=i.createElement("canvas");this.ctx=this.cnv.getContext("2d");this.ih=this.iw=0;this.p=[];this.c=null;this.es=
+function(a,b){return a.ymn===b.ymn?a.xvl===b.xvl?a.ymx-b.ymx:a.xvl-b.xvl:a.ymn-b.ymn};this.ds=function(a,b,c,d){var e=i.createElement("span");d+=2;e.style.cssText="position:absolute;top:"+b+"px;left:"+a+"px;width:"+c+"px;height:"+d+"px;";this.c.appendChild(e)};this.f=function(){var a=[],b=[],c,d,e=[],f,h,i,j=0,k=d=0;d=1;var l=0,m=0;this.c.innerHTML="";for(f=0;f<this.p.length;f++){c={};h=this.p[f];i=f===this.p.length-1?this.p[0]:this.p[f+1];c.ymx=h.y;if(i.y>c.ymx)c.ymx=i.y;if(c.ymx>m)m=c.ymx;c.ymn=
+h.y;if(i.y<c.ymn)c.ymn=i.y;if(c.ymn<l)l=c.ymn;c.xvl=parseInt(h.x,10);if(i.y<h.y)c.xvl=parseInt(i.x,10);if(c.xvl>j)j=c.xvl;d=h.x-i.x;d===0?(c.m=NaN,c.oom=0):(c.m=(h.y-i.y)/d,c.oom=c.m===0?NaN:1/c.m);b.push(c)}for(f=0;f<b.length;f++)b[f].m!==0&&e.push(b[f]);e.sort(this.es);for(b=e[0].ymn;b<m;b++){d=0;g=[];for(f=0;f<e.length;f++)e[f].ymn===b?a.push(e[f]):g.push(e[f]);e=g.slice(0);a.sort(this.es);for(c=0;c<=j;c++)for(f=0;f<a.length;f++)Math.round(a[f].xvl)===c&&(d===0?(k=c,d=1):(d=c,d-=k,d===0&&(d=1),
+this.ds(k,b,d,1),d=0));g=[];for(f=0;f<a.length;f++)a[f].ymx!==b+1&&(a[f].xvl+=a[f].oom,g.push(a[f]));a=g.slice(0)}}};
+
+  $('.alphapunch').each( function() {
+    var fist = new APF();
+
+    $(this).find('.aptarget').each( function() {
+      $(this).wrap('<span style="display:inline-block;position:relative" />');
+      $(this).append('<span class="apmask" id="apmask_' + this.id + '"></span>');
+
+      fist.c = document.getElementById('apmask_' + this.id);
+      fist.ds(0,0,this.offsetWidth,this.offsetHeight);
+    });
+
+    $(this).find('img').each( function() {
+      $(this).wrap('<span style="display:inline-block;position:relative" />');
+      $(this).after('<span class="apmask" id="apmask_' + this.id + '"></span>');
+
+      fist.c = document.getElementById('apmask_' + this.id);
+      fist.iw = this.offsetWidth;
+      fist.ih = this.offsetHeight;
+      fist.p = coords[this.id];
+      fist.f();
+
+      $('#apmask_' + this.id).click( function() {
+        $('#' + this.id).click();
+        return false;
+      });
+    });
+  });
+})();
+{% endhighlight %}
+	<figcaption>Figure 9: JavaScript used when clicking through to a link</figcaption>
+</figure>
+
+<p>The <span class="sc">JS</span> includes the coordinates for your image, the <span class="sc">APF</span> object, and some code telling the <span class="sc">APF</span> to create the masks.</p>
+
+<p>That’s it!</p>
+
+<figure>
+	<div class="alphapunch">
+		<img id="hat_01" src="/img/alphapunch_fig10.png" alt="hat_01" />
+		<ul style="position: absolute; top: 3em;  display: block; text-align: center; list-style-type: none; width: 100%; margin: 0; padding: 0;">
+			<li style="display: inline; padding: 0.75em;"><a class="aptarget" id="foo" href="javascript:alert('foo')">foo</a></li>
+			<li style="display: inline; padding: 0.75em;"><a class="aptarget" id="bar" href="javascript:alert('bar')">bar</a></li>
+		</ul>
+	</div>
+	<figcaption>Figure 10: Live demo of one image with multiple links</figcaption>
+</figure>
+
+<p>As mentioned above, this code will allow you to click through to links behind a single image, but alphaPun.ch also allows for some flexibility. For example, you could add more images within the <code>.alphapunch</code> container, you could adjust the <span class="sc">CSS</span> to change around <code>z-index</code>es, or you could set <code>.aptarget</code>s that aren’t links.</p>
+
+<p>To create the paper doll functionality that started all of this, we just need to add extra images into our <code>.alphapunch</code> <code>div</code>, add coordinates for the extra images into our <code>var coords</code> object, and call the jQuery <span class="sc">UI</span> <code>draggable()</code> function with appropriate handles set. Everything else is standard output from alphaPunch.</p>
+
+<figure>
+{% highlight html linenos %}
+<!-- container indicating alphapunching -->
+<div class="alphapunch">
+
+  <!--
+    image you alphaPunch'd. needs an ID
+    if you run into trouble positioning it, put it in a container element,
+    like <figure>
+  -->
+  <figure><img id="accessory_02" src="accessory_02.png" alt="accessory_02" /></figure>
+  <figure><img id="hat_02" src="hat_02.png" alt="hat_02" /></figure>
+
+  <!--
+    "target" links you want to click through to. they all need IDs.
+    if you run into trouble positioning them, put them in a container
+    element, like <nav> or <ul> or <div>
+  -->
+  <!-- this example doesn't need any target links -->
+
+</div>
+
+<!-- alphapunch uses some jQuery; it must be present -->
+<!-- the paper doll example needs jQuery UI -->
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
+
+<script>
+  (function() {
+    var coords = { accessory_02: [{ x: 21, y: 21 }, { x: 18, y: 21 }, { x: 17, y: 22 }, { x: 12, y: 22 }, { x: 11, y: 21 }, { x: 10, y: 20 }, { x: 9, y: 19 }, { x: 8, y: 18 }, { x: 8, y: 17 }, { x: 7, y: 16 }, { x: 7, y: 14 }, { x: 6, y: 13 }, { x: 6, y: 11 }, { x: 5, y: 10 }, { x: 4, y: 9 }, { x: 2, y: 9 }, { x: 2, y: 8 }, { x: 3, y: 7 }, { x: 4, y: 6 }, { x: 5, y: 6 }, { x: 6, y: 5 }, { x: 9, y: 5 }, { x: 10, y: 4 }, { x: 23, y: 4 }, { x: 24, y: 5 }, { x: 26, y: 5 }, { x: 27, y: 6 }, { x: 33, y: 6 }, { x: 34, y: 5 }, { x: 35, y: 5 }, { x: 36, y: 4 }, { x: 37, y: 4 }, { x: 38, y: 3 }, { x: 45, y: 3 }, { x: 46, y: 2 }, { x: 50, y: 2 }, { x: 51, y: 3 }, { x: 55, y: 3 }, { x: 56, y: 4 }, { x: 57, y: 4 }, { x: 58, y: 5 }, { x: 59, y: 6 }, { x: 58, y: 7 }, { x: 57, y: 7 }, { x: 56, y: 8 }, { x: 56, y: 9 }, { x: 55, y: 10 }, { x: 55, y: 13 }, { x: 54, y: 14 }, { x: 54, y: 16 }, { x: 53, y: 17 }, { x: 52, y: 18 }, { x: 52, y: 19 }, { x: 51, y: 20 }, { x: 40, y: 20 }, { x: 39, y: 19 }, { x: 38, y: 18 }, { x: 37, y: 17 }, { x: 36, y: 16 }, { x: 35, y: 15 }, { x: 35, y: 13 }, { x: 34, y: 12 }, { x: 34, y: 11 }, { x: 33, y: 10 }, { x: 33, y: 9 }, { x: 32, y: 8 }, { x: 30, y: 8 }, { x: 29, y: 9 }, { x: 28, y: 10 }, { x: 28, y: 11 }, { x: 27, y: 12 }, { x: 27, y: 14 }, { x: 26, y: 15 }, { x: 26, y: 17 }, { x: 25, y: 18 }, { x: 24, y: 19 }, { x: 23, y: 20 }, { x: 22, y: 20 }, { x: 21, y: 21 }, { x: 18, y: 21 }],
+    hat_02: [{ x: 39, y: 91 }, { x: 39, y: 93 }, { x: 40, y: 94 }, { x: 40, y: 95 }, { x: 39, y: 94 }, { x: 36, y: 94 }, { x: 35, y: 93 }, { x: 33, y: 93 }, { x: 32, y: 92 }, { x: 30, y: 92 }, { x: 29, y: 91 }, { x: 27, y: 91 }, { x: 26, y: 90 }, { x: 25, y: 90 }, { x: 24, y: 89 }, { x: 23, y: 89 }, { x: 22, y: 88 }, { x: 21, y: 88 }, { x: 20, y: 87 }, { x: 19, y: 87 }, { x: 18, y: 86 }, { x: 17, y: 85 }, { x: 16, y: 84 }, { x: 15, y: 84 }, { x: 14, y: 83 }, { x: 13, y: 82 }, { x: 12, y: 82 }, { x: 11, y: 81 }, { x: 10, y: 80 }, { x: 10, y: 79 }, { x: 9, y: 78 }, { x: 8, y: 77 }, { x: 8, y: 76 }, { x: 7, y: 75 }, { x: 6, y: 74 }, { x: 6, y: 72 }, { x: 5, y: 71 }, { x: 5, y: 69 }, { x: 4, y: 68 }, { x: 4, y: 66 }, { x: 3, y: 65 }, { x: 3, y: 61 }, { x: 2, y: 60 }, { x: 2, y: 57 }, { x: 3, y: 56 }, { x: 3, y: 51 }, { x: 4, y: 50 }, { x: 4, y: 46 }, { x: 5, y: 45 }, { x: 5, y: 42 }, { x: 6, y: 41 }, { x: 6, y: 40 }, { x: 7, y: 39 }, { x: 7, y: 38 }, { x: 8, y: 37 }, { x: 9, y: 36 }, { x: 9, y: 35 }, { x: 10, y: 34 }, { x: 10, y: 33 }, { x: 11, y: 32 }, { x: 12, y: 31 }, { x: 12, y: 30 }, { x: 13, y: 29 }, { x: 14, y: 29 }, { x: 15, y: 28 }, { x: 16, y: 27 }, { x: 18, y: 27 }, { x: 19, y: 26 }, { x: 20, y: 26 }, { x: 21, y: 25 }, { x: 24, y: 25 }, { x: 25, y: 24 }, { x: 28, y: 24 }, { x: 29, y: 25 }, { x: 32, y: 25 }, { x: 33, y: 26 }, { x: 34, y: 26 }, { x: 35, y: 27 }, { x: 36, y: 27 }, { x: 37, y: 28 }, { x: 38, y: 29 }, { x: 40, y: 29 }, { x: 41, y: 28 }, { x: 42, y: 27 }, { x: 42, y: 26 }, { x: 43, y: 25 }, { x: 44, y: 24 }, { x: 44, y: 23 }, { x: 45, y: 22 }, { x: 46, y: 21 }, { x: 46, y: 20 }, { x: 47, y: 19 }, { x: 47, y: 18 }, { x: 48, y: 17 }, { x: 49, y: 16 }, { x: 50, y: 15 }, { x: 51, y: 14 }, { x: 51, y: 13 }, { x: 52, y: 12 }, { x: 53, y: 11 }, { x: 53, y: 10 }, { x: 54, y: 9 }, { x: 55, y: 8 }, { x: 56, y: 7 }, { x: 57, y: 6 }, { x: 57, y: 5 }, { x: 58, y: 4 }, { x: 59, y: 3 }, { x: 67, y: 3 }, { x: 68, y: 4 }, { x: 72, y: 4 }, { x: 73, y: 3 }, { x: 76, y: 3 }, { x: 77, y: 2 }, { x: 78, y: 3 }, { x: 80, y: 3 }, { x: 81, y: 4 }, { x: 82, y: 5 }, { x: 83, y: 6 }, { x: 83, y: 7 }, { x: 84, y: 8 }, { x: 85, y: 9 }, { x: 85, y: 10 }, { x: 86, y: 11 }, { x: 87, y: 12 }, { x: 88, y: 13 }, { x: 89, y: 14 }, { x: 90, y: 15 }, { x: 91, y: 16 }, { x: 92, y: 17 }, { x: 92, y: 18 }, { x: 93, y: 19 }, { x: 94, y: 20 }, { x: 94, y: 22 }, { x: 95, y: 23 }, { x: 95, y: 25 }, { x: 96, y: 26 }, { x: 96, y: 27 }, { x: 97, y: 28 }, { x: 97, y: 29 }, { x: 98, y: 30 }, { x: 99, y: 31 }, { x: 100, y: 30 }, { x: 101, y: 30 }, { x: 102, y: 29 }, { x: 103, y: 29 }, { x: 104, y: 28 }, { x: 105, y: 28 }, { x: 106, y: 27 }, { x: 107, y: 27 }, { x: 108, y: 26 }, { x: 109, y: 25 }, { x: 111, y: 25 }, { x: 112, y: 24 }, { x: 116, y: 24 }, { x: 117, y: 23 }, { x: 119, y: 23 }, { x: 120, y: 24 }, { x: 123, y: 24 }, { x: 124, y: 25 }, { x: 126, y: 25 }, { x: 127, y: 26 }, { x: 128, y: 27 }, { x: 129, y: 28 }, { x: 130, y: 29 }, { x: 131, y: 30 }, { x: 132, y: 31 }, { x: 132, y: 32 }, { x: 133, y: 33 }, { x: 133, y: 35 }, { x: 134, y: 36 }, { x: 134, y: 38 }, { x: 135, y: 39 }, { x: 135, y: 42 }, { x: 136, y: 43 }, { x: 136, y: 48 }, { x: 137, y: 49 }, { x: 137, y: 52 }, { x: 136, y: 53 }, { x: 136, y: 58 }, { x: 135, y: 59 }, { x: 135, y: 63 }, { x: 134, y: 64 }, { x: 134, y: 66 }, { x: 133, y: 67 }, { x: 133, y: 68 }, { x: 132, y: 69 }, { x: 132, y: 71 }, { x: 131, y: 72 }, { x: 130, y: 73 }, { x: 130, y: 74 }, { x: 129, y: 75 }, { x: 129, y: 76 }, { x: 128, y: 77 }, { x: 127, y: 78 }, { x: 126, y: 79 }, { x: 125, y: 80 }, { x: 124, y: 81 }, { x: 123, y: 82 }, { x: 122, y: 83 }, { x: 121, y: 84 }, { x: 120, y: 85 }, { x: 118, y: 85 }, { x: 117, y: 86 }, { x: 116, y: 86 }, { x: 115, y: 87 }, { x: 114, y: 88 }, { x: 112, y: 88 }, { x: 111, y: 89 }, { x: 109, y: 89 }, { x: 108, y: 90 }, { x: 105, y: 90 }, { x: 104, y: 91 }, { x: 103, y: 91 }, { x: 102, y: 92 }, { x: 102, y: 91 }, { x: 103, y: 90 }, { x: 103, y: 89 }, { x: 104, y: 88 }, { x: 104, y: 84 }, { x: 105, y: 83 }, { x: 105, y: 81 }, { x: 106, y: 80 }, { x: 106, y: 77 }, { x: 107, y: 76 }, { x: 107, y: 72 }, { x: 108, y: 71 }, { x: 109, y: 70 }, { x: 109, y: 63 }, { x: 108, y: 62 }, { x: 108, y: 58 }, { x: 107, y: 57 }, { x: 106, y: 56 }, { x: 105, y: 56 }, { x: 104, y: 55 }, { x: 103, y: 55 }, { x: 102, y: 54 }, { x: 100, y: 54 }, { x: 99, y: 53 }, { x: 96, y: 53 }, { x: 95, y: 52 }, { x: 88, y: 52 }, { x: 87, y: 51 }, { x: 69, y: 51 }, { x: 68, y: 52 }, { x: 58, y: 52 }, { x: 57, y: 53 }, { x: 52, y: 53 }, { x: 51, y: 54 }, { x: 49, y: 54 }, { x: 48, y: 55 }, { x: 45, y: 55 }, { x: 44, y: 56 }, { x: 40, y: 56 }, { x: 39, y: 57 }, { x: 37, y: 57 }, { x: 36, y: 58 }, { x: 34, y: 58 }, { x: 33, y: 59 }, { x: 32, y: 60 }, { x: 32, y: 61 }, { x: 31, y: 62 }, { x: 31, y: 64 }, { x: 30, y: 65 }, { x: 29, y: 66 }, { x: 29, y: 69 }, { x: 30, y: 70 }, { x: 30, y: 71 }, { x: 31, y: 72 }, { x: 31, y: 74 }, { x: 32, y: 75 }, { x: 32, y: 77 }, { x: 33, y: 78 }, { x: 33, y: 82 }, { x: 34, y: 83 }, { x: 34, y: 84 }, { x: 35, y: 85 }, { x: 36, y: 86 }, { x: 37, y: 87 }, { x: 38, y: 88 }, { x: 38, y: 90 }, { x: 39, y: 91 }, { x: 39, y: 93 }] };
+
+    var APF=function(){var h=document;this.cn=h.createElement("canvas");this.ctx=this.cn.getContext("2d");this.ih=this.iw=0;this.p=[];this.c=null;this.es=function(a,b){return a.ymn===b.ymn?a.xvl===b.xvl?a.ymx-b.ymx:a.xvl-b.xvl:a.ymn-b.ymn};this.ds=function(a,b,c,d){var e=h.createElement("span");d+=2;e.style.cssText="position:absolute;top:"+b+"px;left:"+a+"px;width:"+c+"px;height:"+d+"px;";this.c.appendChild(e)};this.f=function(){var a=[],b=[],c,d,e=[],f,i,h,j=0,k=d=0;d=1;var l=0,m=0;this.c.innerHTML="";for(f=0;f<this.p.length;f++){c={};i=this.p[f];h=f===this.p.length-1?this.p[0]:this.p[f+1];c.ymx=i.y;if(h.y>c.ymx)c.ymx=h.y;if(c.ymx>m)m=c.ymx;c.ymn=i.y;if(h.y<c.ymn)c.ymn=h.y;if(c.ymn<l)l=c.ymn;c.xvl=parseInt(i.x,10);if(h.y<i.y)c.xvl=parseInt(h.x,10);if(c.xvl>j)j=c.xvl; d=i.x-h.x;d===0?(c.m=NaN,c.oom=0):(c.m=(i.y-h.y)/d,c.oom=c.m===0?NaN:1/c.m);b.push(c)}for(f=0;f<b.length;f++)b[f].m!==0&&e.push(b[f]);e.sort(this.es);for(b=e[0].ymn;b<m;b++){d=0;g=[];for(f=0;f<e.length;f++)e[f].ymn===b?a.push(e[f]):g.push(e[f]);e=g.slice(0);a.sort(this.es);for(c=0;c<=j;c++)for(f=0;f<a.length;f++)Math.round(a[f].xvl)===c&&(d===0?(k=c,d=1):(d=c,d-=k,d===0&&(d=1),this.ds(k,b,d,1),d=0));g=[];for(f=0;f<a.length;f++)a[f].ymx!==b+1&&(a[f].xvl+=a[f].oom,g.push(a[f]));a=g.slice(0)}}};
+
+    $('.alphapunch').each( function() {
+    var fist = new APF();
+
+      $(this).find('.aptarget').each( function() {
+        $(this).wrap('<span style="display:inline-block;position:relative" />');
+        $(this).append('<span class="apmask" id="apmask_' + this.id + '"></span>');
+
+        fist.c = document.getElementById('apmask_' + this.id);
+        fist.ds(0,0,this.offsetWidth,this.offsetHeight);
+      });
+
+      $(this).find('img').each( function() {
+        $(this).wrap('<span style="display:inline-block;position:relative" />');
+        $(this).after('<span class="apmask" id="apmask_' + this.id + '"></span>');
+
+        fist.c = document.getElementById('apmask_' + this.id);
+        fist.iw = this.offsetWidth;
+        fist.ih = this.offsetHeight;
+        fist.p = coords[this.id];
+        fist.f();
+
+        $('#apmask_' + this.id).click( function() {
+          $('#' + this.id).click();
+          return false;
+        });
+      });
+
+      $('.alphapunch > figure > span').draggable({ handle: '.apmask' });
+    });
+  })();
+</script>
+{% endhighlight %}
+	<div class="alphapunch" id="ap_paperdoll">
+		<img style="border: none;" id="accessory_02" src="/img/alphapunch_fig11a.png" alt="accessory_02" />
+		<img style="border: none;" id="hat_02" src="/img/alphapunch_fig11b.png" alt="hat_02" />
+	</div>
+	<figcaption>Figure 11: Code and live demo for paper doll functionality</figcaption>
+</figure>
+
+<h3>Problems</h3>
+
+<p>As it stands, alphaPun.ch has a few problems:</p>
+
+<ol>
+	<li>Alphapun.ch generates a metric craptonne of non-semantic <code>span</code>s when drawing the masks. These are not just bad for the page semantics, but all the extra elements and <span class="sc">DOM</span> changes can also slow down the page, especially on older browsers.</li>
+	<li>When tracing shapes, alphapun.ch considers anything other than opacity 1.0 to be transparent. I really wanted to allow the user to select the opacity threshold, but this caused major slowdowns in processing and often led alphaPun.ch to crash. It’s on the <span class="sc">TODO</span> list.</li>
+	<li>When drawing on a <code>canvas</code>, browsers antialias lines. This can cause problems when pixel-perfect accuracy is needed, as it is here. In order to overcome antialiasing artifacts, I needed to take some steps that lower the accuracy of the masks that get created. As a result, masks don’t perfectly match the original image, and very thin lines may not get masked at all. (Antialiasing can actually be turned off in Firefox, but I opted for relative consistancy between browsers.)</li>
+	<li>Despite the parenthetical remark above, not all browsers trace shapes and create masks in exactly the same way. Chrome and Firefox seem to have the same behaviour, but <span class="sc">IE10</span> will come up with different coordinates. I haven’t figured out <em>exactly</em> why this is, but I think <span class="sc">IE10</span> is reporting pixel opacity values differently. It’s something to investigate further.</li>
+	<li>Alphapun.ch uses <code>canvas</code>, Drag &amp; Drop and <code>FileReader</code>, so any browsers that don’t support these (e.g. Safari 5.x and lower) are left out of the fun (at least for now).</li>
+	<li>Processing complex images (e.g. that are very large, have lots of separate shapes, or with very complex polygons) can be processor intensive and slow. <span class="sc">IE10</span> seems especially slow, but that might just be my <span class="sc">VM</span>.</li>
+</ol>
+
+<h3>Next steps</h3>
+
+<p>I had a heck of a time getting everything in under <span class="sc">10K</span> for the contest, so some of the first things I’d like to do for the non-contest version are organize the code a bit differently, make it more readable, and do some cleanup.</p>
+
+<p>Other than that, and the problems listed above, I’m open. <a rel="external" href="http://alphapun.ch">Go play with it</a>! Let me know if there’s anything you want to see, or anything you want a more detailed explanation for. <a href="/introducing-alphapunch/#disqus_thread">Comment</a>, or <a rel="me" href="mailto:david@davidnewton.ca">email</a>, or <a rel="me" href="http://twitter.com/newtron/">tweet</a>. It’s on <a rel="external" href="https://github.com/nwtn/alphapun.ch">GitHub</a>, so take a look and/or fork it.</p>
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+<script>
+	$(document).ready( function() {
+		(function() {
+			var coords = { hat_01: [{ x: 39, y: 91 }, { x: 39, y: 93 }, { x: 40, y: 94 }, { x: 40, y: 95 }, { x: 39, y: 94 }, { x: 36, y: 94 }, { x: 35, y: 93 }, { x: 33, y: 93 }, { x: 32, y: 92 }, { x: 30, y: 92 }, { x: 29, y: 91 }, { x: 27, y: 91 }, { x: 26, y: 90 }, { x: 25, y: 90 }, { x: 24, y: 89 }, { x: 23, y: 89 }, { x: 22, y: 88 }, { x: 21, y: 88 }, { x: 20, y: 87 }, { x: 19, y: 87 }, { x: 18, y: 86 }, { x: 17, y: 85 }, { x: 16, y: 84 }, { x: 15, y: 84 }, { x: 14, y: 83 }, { x: 13, y: 82 }, { x: 12, y: 82 }, { x: 11, y: 81 }, { x: 10, y: 80 }, { x: 10, y: 79 }, { x: 9, y: 78 }, { x: 8, y: 77 }, { x: 8, y: 76 }, { x: 7, y: 75 }, { x: 6, y: 74 }, { x: 6, y: 72 }, { x: 5, y: 71 }, { x: 5, y: 69 }, { x: 4, y: 68 }, { x: 4, y: 66 }, { x: 3, y: 65 }, { x: 3, y: 61 }, { x: 2, y: 60 }, { x: 2, y: 57 }, { x: 3, y: 56 }, { x: 3, y: 51 }, { x: 4, y: 50 }, { x: 4, y: 46 }, { x: 5, y: 45 }, { x: 5, y: 42 }, { x: 6, y: 41 }, { x: 6, y: 40 }, { x: 7, y: 39 }, { x: 7, y: 38 }, { x: 8, y: 37 }, { x: 9, y: 36 }, { x: 9, y: 35 }, { x: 10, y: 34 }, { x: 10, y: 33 }, { x: 11, y: 32 }, { x: 12, y: 31 }, { x: 12, y: 30 }, { x: 13, y: 29 }, { x: 14, y: 29 }, { x: 15, y: 28 }, { x: 16, y: 27 }, { x: 18, y: 27 }, { x: 19, y: 26 }, { x: 20, y: 26 }, { x: 21, y: 25 }, { x: 24, y: 25 }, { x: 25, y: 24 }, { x: 28, y: 24 }, { x: 29, y: 25 }, { x: 32, y: 25 }, { x: 33, y: 26 }, { x: 34, y: 26 }, { x: 35, y: 27 }, { x: 36, y: 27 }, { x: 37, y: 28 }, { x: 38, y: 29 }, { x: 40, y: 29 }, { x: 41, y: 28 }, { x: 42, y: 27 }, { x: 42, y: 26 }, { x: 43, y: 25 }, { x: 44, y: 24 }, { x: 44, y: 23 }, { x: 45, y: 22 }, { x: 46, y: 21 }, { x: 46, y: 20 }, { x: 47, y: 19 }, { x: 47, y: 18 }, { x: 48, y: 17 }, { x: 49, y: 16 }, { x: 50, y: 15 }, { x: 51, y: 14 }, { x: 51, y: 13 }, { x: 52, y: 12 }, { x: 53, y: 11 }, { x: 53, y: 10 }, { x: 54, y: 9 }, { x: 55, y: 8 }, { x: 56, y: 7 }, { x: 57, y: 6 }, { x: 57, y: 5 }, { x: 58, y: 4 }, { x: 59, y: 3 }, { x: 67, y: 3 }, { x: 68, y: 4 }, { x: 72, y: 4 }, { x: 73, y: 3 }, { x: 76, y: 3 }, { x: 77, y: 2 }, { x: 78, y: 3 }, { x: 80, y: 3 }, { x: 81, y: 4 }, { x: 82, y: 5 }, { x: 83, y: 6 }, { x: 83, y: 7 }, { x: 84, y: 8 }, { x: 85, y: 9 }, { x: 85, y: 10 }, { x: 86, y: 11 }, { x: 87, y: 12 }, { x: 88, y: 13 }, { x: 89, y: 14 }, { x: 90, y: 15 }, { x: 91, y: 16 }, { x: 92, y: 17 }, { x: 92, y: 18 }, { x: 93, y: 19 }, { x: 94, y: 20 }, { x: 94, y: 22 }, { x: 95, y: 23 }, { x: 95, y: 25 }, { x: 96, y: 26 }, { x: 96, y: 27 }, { x: 97, y: 28 }, { x: 97, y: 29 }, { x: 98, y: 30 }, { x: 99, y: 31 }, { x: 100, y: 30 }, { x: 101, y: 30 }, { x: 102, y: 29 }, { x: 103, y: 29 }, { x: 104, y: 28 }, { x: 105, y: 28 }, { x: 106, y: 27 }, { x: 107, y: 27 }, { x: 108, y: 26 }, { x: 109, y: 25 }, { x: 111, y: 25 }, { x: 112, y: 24 }, { x: 116, y: 24 }, { x: 117, y: 23 }, { x: 119, y: 23 }, { x: 120, y: 24 }, { x: 123, y: 24 }, { x: 124, y: 25 }, { x: 126, y: 25 }, { x: 127, y: 26 }, { x: 128, y: 27 }, { x: 129, y: 28 }, { x: 130, y: 29 }, { x: 131, y: 30 }, { x: 132, y: 31 }, { x: 132, y: 32 }, { x: 133, y: 33 }, { x: 133, y: 35 }, { x: 134, y: 36 }, { x: 134, y: 38 }, { x: 135, y: 39 }, { x: 135, y: 42 }, { x: 136, y: 43 }, { x: 136, y: 48 }, { x: 137, y: 49 }, { x: 137, y: 52 }, { x: 136, y: 53 }, { x: 136, y: 58 }, { x: 135, y: 59 }, { x: 135, y: 63 }, { x: 134, y: 64 }, { x: 134, y: 66 }, { x: 133, y: 67 }, { x: 133, y: 68 }, { x: 132, y: 69 }, { x: 132, y: 71 }, { x: 131, y: 72 }, { x: 130, y: 73 }, { x: 130, y: 74 }, { x: 129, y: 75 }, { x: 129, y: 76 }, { x: 128, y: 77 }, { x: 127, y: 78 }, { x: 126, y: 79 }, { x: 125, y: 80 }, { x: 124, y: 81 }, { x: 123, y: 82 }, { x: 122, y: 83 }, { x: 121, y: 84 }, { x: 120, y: 85 }, { x: 118, y: 85 }, { x: 117, y: 86 }, { x: 116, y: 86 }, { x: 115, y: 87 }, { x: 114, y: 88 }, { x: 112, y: 88 }, { x: 111, y: 89 }, { x: 109, y: 89 }, { x: 108, y: 90 }, { x: 105, y: 90 }, { x: 104, y: 91 }, { x: 103, y: 91 }, { x: 102, y: 92 }, { x: 102, y: 91 }, { x: 103, y: 90 }, { x: 103, y: 89 }, { x: 104, y: 88 }, { x: 104, y: 84 }, { x: 105, y: 83 }, { x: 105, y: 81 }, { x: 106, y: 80 }, { x: 106, y: 77 }, { x: 107, y: 76 }, { x: 107, y: 72 }, { x: 108, y: 71 }, { x: 109, y: 70 }, { x: 109, y: 63 }, { x: 108, y: 62 }, { x: 108, y: 58 }, { x: 107, y: 57 }, { x: 106, y: 56 }, { x: 105, y: 56 }, { x: 104, y: 55 }, { x: 103, y: 55 }, { x: 102, y: 54 }, { x: 100, y: 54 }, { x: 99, y: 53 }, { x: 96, y: 53 }, { x: 95, y: 52 }, { x: 88, y: 52 }, { x: 87, y: 51 }, { x: 69, y: 51 }, { x: 68, y: 52 }, { x: 58, y: 52 }, { x: 57, y: 53 }, { x: 52, y: 53 }, { x: 51, y: 54 }, { x: 49, y: 54 }, { x: 48, y: 55 }, { x: 45, y: 55 }, { x: 44, y: 56 }, { x: 40, y: 56 }, { x: 39, y: 57 }, { x: 37, y: 57 }, { x: 36, y: 58 }, { x: 34, y: 58 }, { x: 33, y: 59 }, { x: 32, y: 60 }, { x: 32, y: 61 }, { x: 31, y: 62 }, { x: 31, y: 64 }, { x: 30, y: 65 }, { x: 29, y: 66 }, { x: 29, y: 69 }, { x: 30, y: 70 }, { x: 30, y: 71 }, { x: 31, y: 72 }, { x: 31, y: 74 }, { x: 32, y: 75 }, { x: 32, y: 77 }, { x: 33, y: 78 }, { x: 33, y: 82 }, { x: 34, y: 83 }, { x: 34, y: 84 }, { x: 35, y: 85 }, { x: 36, y: 86 }, { x: 37, y: 87 }, { x: 38, y: 88 }, { x: 38, y: 90 }, { x: 39, y: 91 }, { x: 39, y: 93 }],
+			  accessory_02: [{ x: 21, y: 21 }, { x: 18, y: 21 }, { x: 17, y: 22 }, { x: 12, y: 22 }, { x: 11, y: 21 }, { x: 10, y: 20 }, { x: 9, y: 19 }, { x: 8, y: 18 }, { x: 8, y: 17 }, { x: 7, y: 16 }, { x: 7, y: 14 }, { x: 6, y: 13 }, { x: 6, y: 11 }, { x: 5, y: 10 }, { x: 4, y: 9 }, { x: 2, y: 9 }, { x: 2, y: 8 }, { x: 3, y: 7 }, { x: 4, y: 6 }, { x: 5, y: 6 }, { x: 6, y: 5 }, { x: 9, y: 5 }, { x: 10, y: 4 }, { x: 23, y: 4 }, { x: 24, y: 5 }, { x: 26, y: 5 }, { x: 27, y: 6 }, { x: 33, y: 6 }, { x: 34, y: 5 }, { x: 35, y: 5 }, { x: 36, y: 4 }, { x: 37, y: 4 }, { x: 38, y: 3 }, { x: 45, y: 3 }, { x: 46, y: 2 }, { x: 50, y: 2 }, { x: 51, y: 3 }, { x: 55, y: 3 }, { x: 56, y: 4 }, { x: 57, y: 4 }, { x: 58, y: 5 }, { x: 59, y: 6 }, { x: 58, y: 7 }, { x: 57, y: 7 }, { x: 56, y: 8 }, { x: 56, y: 9 }, { x: 55, y: 10 }, { x: 55, y: 13 }, { x: 54, y: 14 }, { x: 54, y: 16 }, { x: 53, y: 17 }, { x: 52, y: 18 }, { x: 52, y: 19 }, { x: 51, y: 20 }, { x: 40, y: 20 }, { x: 39, y: 19 }, { x: 38, y: 18 }, { x: 37, y: 17 }, { x: 36, y: 16 }, { x: 35, y: 15 }, { x: 35, y: 13 }, { x: 34, y: 12 }, { x: 34, y: 11 }, { x: 33, y: 10 }, { x: 33, y: 9 }, { x: 32, y: 8 }, { x: 30, y: 8 }, { x: 29, y: 9 }, { x: 28, y: 10 }, { x: 28, y: 11 }, { x: 27, y: 12 }, { x: 27, y: 14 }, { x: 26, y: 15 }, { x: 26, y: 17 }, { x: 25, y: 18 }, { x: 24, y: 19 }, { x: 23, y: 20 }, { x: 22, y: 20 }, { x: 21, y: 21 }, { x: 18, y: 21 }],
+			  hat_02: [{ x: 39, y: 91 }, { x: 39, y: 93 }, { x: 40, y: 94 }, { x: 40, y: 95 }, { x: 39, y: 94 }, { x: 36, y: 94 }, { x: 35, y: 93 }, { x: 33, y: 93 }, { x: 32, y: 92 }, { x: 30, y: 92 }, { x: 29, y: 91 }, { x: 27, y: 91 }, { x: 26, y: 90 }, { x: 25, y: 90 }, { x: 24, y: 89 }, { x: 23, y: 89 }, { x: 22, y: 88 }, { x: 21, y: 88 }, { x: 20, y: 87 }, { x: 19, y: 87 }, { x: 18, y: 86 }, { x: 17, y: 85 }, { x: 16, y: 84 }, { x: 15, y: 84 }, { x: 14, y: 83 }, { x: 13, y: 82 }, { x: 12, y: 82 }, { x: 11, y: 81 }, { x: 10, y: 80 }, { x: 10, y: 79 }, { x: 9, y: 78 }, { x: 8, y: 77 }, { x: 8, y: 76 }, { x: 7, y: 75 }, { x: 6, y: 74 }, { x: 6, y: 72 }, { x: 5, y: 71 }, { x: 5, y: 69 }, { x: 4, y: 68 }, { x: 4, y: 66 }, { x: 3, y: 65 }, { x: 3, y: 61 }, { x: 2, y: 60 }, { x: 2, y: 57 }, { x: 3, y: 56 }, { x: 3, y: 51 }, { x: 4, y: 50 }, { x: 4, y: 46 }, { x: 5, y: 45 }, { x: 5, y: 42 }, { x: 6, y: 41 }, { x: 6, y: 40 }, { x: 7, y: 39 }, { x: 7, y: 38 }, { x: 8, y: 37 }, { x: 9, y: 36 }, { x: 9, y: 35 }, { x: 10, y: 34 }, { x: 10, y: 33 }, { x: 11, y: 32 }, { x: 12, y: 31 }, { x: 12, y: 30 }, { x: 13, y: 29 }, { x: 14, y: 29 }, { x: 15, y: 28 }, { x: 16, y: 27 }, { x: 18, y: 27 }, { x: 19, y: 26 }, { x: 20, y: 26 }, { x: 21, y: 25 }, { x: 24, y: 25 }, { x: 25, y: 24 }, { x: 28, y: 24 }, { x: 29, y: 25 }, { x: 32, y: 25 }, { x: 33, y: 26 }, { x: 34, y: 26 }, { x: 35, y: 27 }, { x: 36, y: 27 }, { x: 37, y: 28 }, { x: 38, y: 29 }, { x: 40, y: 29 }, { x: 41, y: 28 }, { x: 42, y: 27 }, { x: 42, y: 26 }, { x: 43, y: 25 }, { x: 44, y: 24 }, { x: 44, y: 23 }, { x: 45, y: 22 }, { x: 46, y: 21 }, { x: 46, y: 20 }, { x: 47, y: 19 }, { x: 47, y: 18 }, { x: 48, y: 17 }, { x: 49, y: 16 }, { x: 50, y: 15 }, { x: 51, y: 14 }, { x: 51, y: 13 }, { x: 52, y: 12 }, { x: 53, y: 11 }, { x: 53, y: 10 }, { x: 54, y: 9 }, { x: 55, y: 8 }, { x: 56, y: 7 }, { x: 57, y: 6 }, { x: 57, y: 5 }, { x: 58, y: 4 }, { x: 59, y: 3 }, { x: 67, y: 3 }, { x: 68, y: 4 }, { x: 72, y: 4 }, { x: 73, y: 3 }, { x: 76, y: 3 }, { x: 77, y: 2 }, { x: 78, y: 3 }, { x: 80, y: 3 }, { x: 81, y: 4 }, { x: 82, y: 5 }, { x: 83, y: 6 }, { x: 83, y: 7 }, { x: 84, y: 8 }, { x: 85, y: 9 }, { x: 85, y: 10 }, { x: 86, y: 11 }, { x: 87, y: 12 }, { x: 88, y: 13 }, { x: 89, y: 14 }, { x: 90, y: 15 }, { x: 91, y: 16 }, { x: 92, y: 17 }, { x: 92, y: 18 }, { x: 93, y: 19 }, { x: 94, y: 20 }, { x: 94, y: 22 }, { x: 95, y: 23 }, { x: 95, y: 25 }, { x: 96, y: 26 }, { x: 96, y: 27 }, { x: 97, y: 28 }, { x: 97, y: 29 }, { x: 98, y: 30 }, { x: 99, y: 31 }, { x: 100, y: 30 }, { x: 101, y: 30 }, { x: 102, y: 29 }, { x: 103, y: 29 }, { x: 104, y: 28 }, { x: 105, y: 28 }, { x: 106, y: 27 }, { x: 107, y: 27 }, { x: 108, y: 26 }, { x: 109, y: 25 }, { x: 111, y: 25 }, { x: 112, y: 24 }, { x: 116, y: 24 }, { x: 117, y: 23 }, { x: 119, y: 23 }, { x: 120, y: 24 }, { x: 123, y: 24 }, { x: 124, y: 25 }, { x: 126, y: 25 }, { x: 127, y: 26 }, { x: 128, y: 27 }, { x: 129, y: 28 }, { x: 130, y: 29 }, { x: 131, y: 30 }, { x: 132, y: 31 }, { x: 132, y: 32 }, { x: 133, y: 33 }, { x: 133, y: 35 }, { x: 134, y: 36 }, { x: 134, y: 38 }, { x: 135, y: 39 }, { x: 135, y: 42 }, { x: 136, y: 43 }, { x: 136, y: 48 }, { x: 137, y: 49 }, { x: 137, y: 52 }, { x: 136, y: 53 }, { x: 136, y: 58 }, { x: 135, y: 59 }, { x: 135, y: 63 }, { x: 134, y: 64 }, { x: 134, y: 66 }, { x: 133, y: 67 }, { x: 133, y: 68 }, { x: 132, y: 69 }, { x: 132, y: 71 }, { x: 131, y: 72 }, { x: 130, y: 73 }, { x: 130, y: 74 }, { x: 129, y: 75 }, { x: 129, y: 76 }, { x: 128, y: 77 }, { x: 127, y: 78 }, { x: 126, y: 79 }, { x: 125, y: 80 }, { x: 124, y: 81 }, { x: 123, y: 82 }, { x: 122, y: 83 }, { x: 121, y: 84 }, { x: 120, y: 85 }, { x: 118, y: 85 }, { x: 117, y: 86 }, { x: 116, y: 86 }, { x: 115, y: 87 }, { x: 114, y: 88 }, { x: 112, y: 88 }, { x: 111, y: 89 }, { x: 109, y: 89 }, { x: 108, y: 90 }, { x: 105, y: 90 }, { x: 104, y: 91 }, { x: 103, y: 91 }, { x: 102, y: 92 }, { x: 102, y: 91 }, { x: 103, y: 90 }, { x: 103, y: 89 }, { x: 104, y: 88 }, { x: 104, y: 84 }, { x: 105, y: 83 }, { x: 105, y: 81 }, { x: 106, y: 80 }, { x: 106, y: 77 }, { x: 107, y: 76 }, { x: 107, y: 72 }, { x: 108, y: 71 }, { x: 109, y: 70 }, { x: 109, y: 63 }, { x: 108, y: 62 }, { x: 108, y: 58 }, { x: 107, y: 57 }, { x: 106, y: 56 }, { x: 105, y: 56 }, { x: 104, y: 55 }, { x: 103, y: 55 }, { x: 102, y: 54 }, { x: 100, y: 54 }, { x: 99, y: 53 }, { x: 96, y: 53 }, { x: 95, y: 52 }, { x: 88, y: 52 }, { x: 87, y: 51 }, { x: 69, y: 51 }, { x: 68, y: 52 }, { x: 58, y: 52 }, { x: 57, y: 53 }, { x: 52, y: 53 }, { x: 51, y: 54 }, { x: 49, y: 54 }, { x: 48, y: 55 }, { x: 45, y: 55 }, { x: 44, y: 56 }, { x: 40, y: 56 }, { x: 39, y: 57 }, { x: 37, y: 57 }, { x: 36, y: 58 }, { x: 34, y: 58 }, { x: 33, y: 59 }, { x: 32, y: 60 }, { x: 32, y: 61 }, { x: 31, y: 62 }, { x: 31, y: 64 }, { x: 30, y: 65 }, { x: 29, y: 66 }, { x: 29, y: 69 }, { x: 30, y: 70 }, { x: 30, y: 71 }, { x: 31, y: 72 }, { x: 31, y: 74 }, { x: 32, y: 75 }, { x: 32, y: 77 }, { x: 33, y: 78 }, { x: 33, y: 82 }, { x: 34, y: 83 }, { x: 34, y: 84 }, { x: 35, y: 85 }, { x: 36, y: 86 }, { x: 37, y: 87 }, { x: 38, y: 88 }, { x: 38, y: 90 }, { x: 39, y: 91 }, { x: 39, y: 93 }] };
+			var APF=function(){var i=document;this.cnv=i.createElement("canvas");this.ctx=this.cnv.getContext("2d");this.ih=this.iw=0;this.p=[];this.c=null;this.es=function(a,b){return a.ymn===b.ymn?a.xvl===b.xvl?a.ymx-b.ymx:a.xvl-b.xvl:a.ymn-b.ymn};this.ds=function(a,b,c,d){var e=i.createElement("span");d+=2;e.style.cssText="position:absolute;top:"+b+"px;left:"+a+"px;width:"+c+"px;height:"+d+"px;";this.c.appendChild(e)};this.f=function(){var a=[],b=[],c,d,e=[],f,h,i,j=0,k=d=0;d=1;var l=0,m=0;this.c.innerHTML="";for(f=0;f<this.p.length;f++){c={};h=this.p[f];i=f===this.p.length-1?this.p[0]:this.p[f+1];c.ymx=h.y;if(i.y>c.ymx)c.ymx=i.y;if(c.ymx>m)m=c.ymx;c.ymn=h.y;if(i.y<c.ymn)c.ymn=i.y;if(c.ymn<l)l=c.ymn;c.xvl=parseInt(h.x,10);if(i.y<h.y)c.xvl=parseInt(i.x,10);if(c.xvl>j)j=c.xvl;d=h.x-i.x;d===0?(c.m=NaN,c.oom=0):(c.m=(h.y-i.y)/d,c.oom=c.m===0?NaN:1/c.m);b.push(c)}for(f=0;f<b.length;f++)b[f].m!==0&&e.push(b[f]);e.sort(this.es);for(b=e[0].ymn;b<m;b++){d=0;g=[];for(f=0;f<e.length;f++)e[f].ymn===b?a.push(e[f]):g.push(e[f]);e=g.slice(0);a.sort(this.es);for(c=0;c<=j;c++)for(f=0;f<a.length;f++)Math.round(a[f].xvl)===c&&(d===0?(k=c,d=1):(d=c,d-=k,d===0&&(d=1),this.ds(k,b,d,1),d=0));g=[];for(f=0;f<a.length;f++)a[f].ymx!==b+1&&(a[f].xvl+=a[f].oom,g.push(a[f]));a=g.slice(0)}}};
+
+			$('.alphapunch').each( function() {
+				var fist = new APF();
+
+				$(this).find('.aptarget').each( function() {
+					$(this).wrap('<span style="display:inline-block;position:relative" />');
+					$(this).append('<span class="apmask" id="apmask_' + this.id + '"></span>');
+
+					fist.c = document.getElementById('apmask_' + this.id);
+					fist.ds(0,0,this.offsetWidth,this.offsetHeight);
+				});
+
+				$(this).find('img').each( function() {
+					$(this).wrap('<span style="display:inline-block;position:relative;" />');
+					$(this).after('<span class="apmask" id="apmask_' + this.id + '"></span>');
+
+					fist.c = document.getElementById('apmask_' + this.id);
+					fist.iw = this.offsetWidth;
+					fist.ih = this.offsetHeight;
+					fist.p = coords[this.id];
+					fist.f();
+
+					$('#apmask_' + this.id).click( function() {
+						$('#' + this.id).click();
+						return false;
+					});
+				});
+
+				$('#ap_paperdoll > span').draggable({ handle: '.apmask' });
+			});
+		})();
+	});
+</script>

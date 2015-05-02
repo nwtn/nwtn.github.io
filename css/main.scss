@@ -1,0 +1,36 @@
+---
+---
+@charset "utf-8";
+
+// Vars
+$serif:			'Signika', 'Neuton', Garamond, serif;
+$sans:			'Alegreya Sans SC', Helvetica, sans-serif;
+$mono:			'Cutive Mono', monospace;
+
+$lineheight:	1.4;
+
+$fontsize:		14pt;
+$fontsize-sm:	0.8rem;
+$fontsize-md:	1rem;
+$fontsize-bg:	1.5rem;
+$fontsize-hg:	2rem;
+
+$space:			1.5rem;
+
+$color-text: 	#78302f;
+$color-bg:		#f8e9f8;
+$color-link:	#222;
+$color-second:  lighten($color-link, 30%);
+$color-hilite:	rgba(lighten($color-link, 90%), 0.5);
+$color-hilite2:	#eda8e2;
+
+$break-sm:		$space * 25;
+$break-lg:		$space * 42;
+
+// Import partials from `_sass`
+@import
+	"base",
+	"layout",
+	"syntax-highlighting",
+	"specific"
+;

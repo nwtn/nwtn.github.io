@@ -1,0 +1,26 @@
+.alphapunch {
+	margin: 2rem;
+	position: relative;
+    text-align: center;
+
+	img {
+		margin: 0;
+		padding: 0;
+		position: relative;
+		z-index: 2;
+
+		& + .apmask span {
+			z-index: 4;
+		}
+	}
+
+	.aptarget {
+		display: inline-block;
+	}
+
+	.apmask span {
+		z-index: 3;
+		background: rgba(0,0,0,0.001);
+	}
+}
+

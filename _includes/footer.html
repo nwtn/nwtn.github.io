@@ -1,0 +1,19 @@
+<footer role="contentinfo">
+
+	<ul>
+		{% if site.email %}
+		<li><a href="mailto:{{ site.email }}">{{ site.email }}</a></li>
+		{% endif %}
+		{% if site.github_username %}
+		<li><a href="https://github.com/{{ site.github_username }}">Github: @{{ site.github_username }}</a></li>
+		{% endif %}
+		{% if site.twitter_username %}
+		<li><a href="https://twitter.com/{{ site.twitter_username }}">Twitter: @{{ site.twitter_username }}</a></li>
+		{% endif %}
+	</ul>
+
+	<p>
+		<small>© Copyright David Newton. This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/2.5/ca/">CC BY-NC-SA 2.5 CA</a> License.</small>
+	</p>
+
+</footer>
