@@ -7,15 +7,25 @@ ord: 1
 
 ### Upcoming
 
+* Universal Web Design: How to create an awesome experience for *every* user  
+[Open Source Bridge](http://opensourcebridge.org/)  
+June 24, 2015. Portland, Oregon, USA.  
+
 * Improving performance with responsive (and responsible!) images  
-[OpenWest 2015](http://www.openwest.org/)  
-May 7, 2015. Orem, Utah, USA.
+[CSSConf](https://2015.cssconf.com/)  
+June 18–19, 2015. New York City, New York, USA.  
+
+### Past
 
 * Universal Web Design: How to create an awesome experience for *every* user  
 [OpenWest 2015](http://www.openwest.org/)  
-May 7, 2015. Orem, Utah, USA.
+May 7, 2015. Orem, Utah, USA.  
+[Slides](https://speakerdeck.com/newtron/universal-web-design-how-to-create-an-awesome-experience-for-every-user-openwest)
 
-### Past
+* Improving performance with responsive (and responsible!) images  
+[OpenWest 2015](http://www.openwest.org/)  
+May 7, 2015. Orem, Utah, USA.  
+[Slides](https://speakerdeck.com/newtron/improving-performance-with-responsive-and-responsible-images-openwest)
 
 * Using ImageMagick to Resize Your Images  
 [Full Stack Toronto Meetup](http://www.meetup.com/full-stack-to/events/221499929/)  
@@ -72,4 +82,4 @@ September 21, 2005. Salzburg, Austria.
 
 * Panel: Behind the Scenes of the CAF Submission and Jury Process — Mechanism of the Electronic Theater Revealed  
 [ACM SIGGRAPH 2000, 27th International Conference on Computer Graphics and Interactive Techniques](http://www.siggraph.org/s2000/conference/caf/index.html)  
-July, 2000
+July, 2000. New Orleans, Louisiana, USA.
