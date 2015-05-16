@@ -16,7 +16,7 @@ layout: default
 			{{ post.excerpt }}
 
 			<footer>
-				<a href="{{ post.url | prepend: site.baseurl }}">Continue reading</a>
+				<a href="{{ post.url | prepend: site.baseurl }}">Continue reading<span class="visuallyhidden"> {{ post.title }}</span></a>
 			</footer>
 		</article>
 
