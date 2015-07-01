@@ -5,9 +5,13 @@ permalink: /publications/
 ord: 2
 ---
 
+* 	[Efficient Image Resizing With ImageMagick](http://www.smashingmagazine.com/2015/06/25/efficient-image-resizing-with-imagemagick/)  
+Smashing Magazine  
+25 June, 2015
+
 * [Keeping The Big &lt;picture&gt; Small: How To Avoid Duplicate Downloads In Responsive Images](http://www.smashingmagazine.com/2013/05/10/how-to-avoid-duplicate-downloads-in-responsive-images/)  
 Smashing Magazine  
-May 10, 2013
+10 May, 2013
 
 ### Web standards
 

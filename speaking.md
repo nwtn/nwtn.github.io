@@ -5,17 +5,18 @@ permalink: /speaking/
 ord: 1
 ---
 
-### Upcoming
+<!-- ### Upcoming -->
+<!-- ### Past -->
 
 * Universal Web Design: How to create an awesome experience for *every* user  
 [Open Source Bridge](http://opensourcebridge.org/)  
 June 24, 2015. Portland, Oregon, USA.  
+[Slides](https://speakerdeck.com/newtron/universal-web-design-how-to-create-an-awesome-experience-for-every-user-open-source-bridge)
 
 * Improving performance with responsive (and responsible!) images  
 [CSSConf](https://2015.cssconf.com/)  
-June 18–19, 2015. New York City, New York, USA.  
-
-### Past
+June 18, 2015. New York City, New York, USA.  
+[Slides](https://speakerdeck.com/newtron/improving-performance-with-responsive-and-responsible-images-cssconf), [Video](https://www.youtube.com/watch?v=jYGAjAee0dU)
 
 * Universal Web Design: How to create an awesome experience for *every* user  
 [OpenWest 2015](http://www.openwest.org/)  
