@@ -8,6 +8,16 @@ ord: 1
 <!-- ### Upcoming -->
 <!-- ### Past -->
 
+* Information architecture as knowledge translation: What happens when IA is a matter of life and death?  
+[World IA Day: Ottawa](http://2016.worldiaday.org/location/ottawa-canada)  
+February 20, 2016. Ottawa, Ontario, Canada.  
+[Slides](https://speakerdeck.com/newtron/information-architecture-as-knowledge-translation-world-ia-day), [Video](http://davidnewton.ca/talks/WIADOtt16-dave-newton.m4v)
+
+* Improving performance with responsive (and responsible!) images  
+[CSSDay.io](http://2015.cssday.io/)  
+December 5, 2015. Chandler, Arizona, USA.  
+[Slides](https://speakerdeck.com/newtron), [Video](https://www.youtube.com/watch?v=O9JGDHEL2b8)
+
 * Universal Web Design: How to create an awesome experience for *every* user  
 [Open Source Bridge](http://opensourcebridge.org/)  
 June 24, 2015. Portland, Oregon, USA.  
