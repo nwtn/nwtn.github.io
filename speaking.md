@@ -16,12 +16,12 @@ February 20, 2016. Ottawa, Ontario, Canada.
 * Improving performance with responsive (and responsible!) images  
 [CSSDay.io](http://2015.cssday.io/)  
 December 5, 2015. Chandler, Arizona, USA.  
-[Slides](https://speakerdeck.com/newtron), [Video](https://www.youtube.com/watch?v=O9JGDHEL2b8)
+[Slides](https://speakerdeck.com/newtron/improving-performance-with-responsive-and-responsible-images-cssday-dot-io), [Video](https://www.youtube.com/watch?v=O9JGDHEL2b8)
 
 * Universal Web Design: How to create an awesome experience for *every* user  
 [Open Source Bridge](http://opensourcebridge.org/)  
 June 24, 2015. Portland, Oregon, USA.  
-[Slides](https://speakerdeck.com/newtron/universal-web-design-how-to-create-an-awesome-experience-for-every-user-open-source-bridge)
+[Slides](https://speakerdeck.com/newtron/universal-web-design-how-to-create-an-awesome-experience-for-every-user-open-source-bridge), [Video](https://www.youtube.com/watch?v=GaX21O6mgVQ)
 
 * Improving performance with responsive (and responsible!) images  
 [CSSConf](https://2015.cssconf.com/)  
@@ -31,7 +31,7 @@ June 18, 2015. New York City, New York, USA.
 * Universal Web Design: How to create an awesome experience for *every* user  
 [OpenWest 2015](http://www.openwest.org/)  
 May 7, 2015. Orem, Utah, USA.  
-[Slides](https://speakerdeck.com/newtron/universal-web-design-how-to-create-an-awesome-experience-for-every-user-openwest)
+[Slides](https://speakerdeck.com/newtron/universal-web-design-how-to-create-an-awesome-experience-for-every-user-openwest), [Video](https://www.youtube.com/watch?v=COGW_KXHY8I)
 
 * Improving performance with responsive (and responsible!) images  
 [OpenWest 2015](http://www.openwest.org/)  
@@ -89,7 +89,8 @@ February 7, 2011. Toronto, Ontario, Canada.
 
 * Mobile text entry: Relationship between walking speed and text input task difficulty  
 [7th International Conference on Human Computer Interaction with Mobile Devices and Services](https://web.archive.org/web/20120825132735/http://conference.icts.sbg.ac.at/mobilehci.icts.sbg.ac.at/programme.htm)  
-September 21, 2005. Salzburg, Austria.
+September 21, 2005. Salzburg, Austria.  
+[Slides](https://speakerdeck.com/newtron/mobile-text-entry-relationship-between-walking-speed-and-text-input-task-difficulty-mobilehci)
 
 * Panel: Behind the scenes of the CAF submission and jury process — Mechanism of the Electronic Theater revealed  
 [ACM SIGGRAPH 2000, 27th International Conference on Computer Graphics and Interactive Techniques](http://www.siggraph.org/s2000/conference/caf/index.html)  
