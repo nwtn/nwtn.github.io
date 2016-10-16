@@ -5,8 +5,14 @@ permalink: /speaking/
 ord: 1
 ---
 
-<!-- ### Upcoming -->
-<!-- ### Past -->
+### Upcoming
+
+* Universal Web Design  
+[Full Stack Toronto](http://fsto.co/)  
+October 18, 2016. Toronto, Ontario, Canada.  
+
+### Past
+
 * Make Commerce Better for Everyone  
 Shopify UX Summit  
 July 5, 2016. Ottawa, Ontario, Canada.  
