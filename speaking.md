@@ -7,6 +7,9 @@ ord: 1
 
 <!-- ### Upcoming -->
 <!-- ### Past -->
+* Make Commerce Better for Everyone  
+Shopify UX Summit  
+July 5, 2016. Ottawa, Ontario, Canada.  
 
 * Information architecture as knowledge translation: What happens when IA is a matter of life and death?  
 [World IA Day: Ottawa](http://2016.worldiaday.org/location/ottawa-canada)  
