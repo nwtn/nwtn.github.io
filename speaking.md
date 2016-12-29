@@ -5,13 +5,23 @@ permalink: /speaking/
 ord: 1
 ---
 
-### Upcoming
+<!-- ### Upcoming -->
+<!-- ### Past -->
+
+* Universal Web Design  
+[Accessibility Camp Toronto](http://www.accessibilitycampto.org/)  
+November 5, 2016. Toronto, Ontario, Canada.  
+[Slides](https://speakerdeck.com/newtron/universal-web-design-accessibility-camp-toronto)
+
+* Universal Web Design  
+HackerYou A11y Club  
+October 24, 2016. Toronto, Ontario, Canada.  
+[Slides](https://speakerdeck.com/newtron/universal-web-design-hackeryou-a11y-club)
 
 * Universal Web Design  
 [Full Stack Toronto](http://fsto.co/)  
 October 18, 2016. Toronto, Ontario, Canada.  
-
-### Past
+[Slides](https://speakerdeck.com/newtron/universal-web-design-full-stack-toronto)
 
 * Make Commerce Better for Everyone  
 Shopify UX Summit  
